@@ -54,14 +54,14 @@ export default function RegisterPage() {
       setDone(true)
     } catch (error) {
       if (isAxiosError(error)) {
-              const data = error.response?.data
-              console.log(data)
-              if (data?.message === 'Validation failed') {
-                const passwordErrors = data.errors?.properties?.password?.errors
-                setError(passwordErrors?.[0] || 'Invalid password format.')
-              } else {
-                setError(data?.message || 'Something went wrong.')
-              }
+        // The server explains a refusal, like a taken email or an email it couldn't send
+        const data = error.response?.data
+        if (data?.message === 'Validation failed') {
+          const passwordErrors = data.errors?.properties?.password?.errors
+          setError(passwordErrors?.[0] || 'Invalid password format.')
+        } else {
+          setError(data?.message || 'Something went wrong.')
+        }
       } else {
         setError('Something went wrong. Please try again.')
       }

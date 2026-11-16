@@ -32,9 +32,16 @@ You need Node.js and a MongoDB database (local or MongoDB Atlas).
    |---|---|
    | `MONGO_URL` | Connection string of your MongoDB database |
    | `JWT_SECRET` | A long random string used to sign logins |
-   | `RESEND_API_KEY` | API key from [Resend](https://resend.com), for verification and password emails |
    | `PORT` | Port the API listens on. The client expects `5000`. |
    | `CLIENT_URL` | Address of the client, used in email links. Defaults to `http://localhost:5173`. |
+   | `EMAIL_PROVIDER` | How verification and password emails are sent: `gmail` or `resend` (the default) |
+   | `GMAIL_USER` | With Gmail: the Gmail address emails are sent from |
+   | `GMAIL_APP_PASSWORD` | With Gmail: an app password for that account (see below), not its normal password |
+   | `RESEND_API_KEY` | With Resend: API key from [Resend](https://resend.com). Needs a domain verified there to email anyone but yourself. |
+   | `EMAIL_FROM` | Optional sender, like `outFITless <hello@yourdomain.com>`. With Gmail it defaults to the Gmail address. |
+
+   To send with Gmail, turn on 2-step verification for the account, then create an app password
+   at https://myaccount.google.com/apppasswords and put its 16 characters in `GMAIL_APP_PASSWORD`.
 
    Then start it:
 

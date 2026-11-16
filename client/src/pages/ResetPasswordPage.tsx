@@ -34,7 +34,6 @@ export default function ResetPasswordPage() {
     } catch (error) {
       if (isAxiosError(error)) {
         const data = error.response?.data
-        console.log(data)
         if (data?.message === 'Validation failed') {
           const passwordErrors = data.errors?.properties?.password?.errors
           setError(passwordErrors?.[0] || 'Invalid password format.')

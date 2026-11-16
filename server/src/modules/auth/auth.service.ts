@@ -37,6 +37,14 @@ const issueRefreshToken = async (userId: mongoose.Types.ObjectId, family: string
   return refreshToken;
 };
 
+// Without the verification email the new account can't be used, so a failure is reported. The
+// account stays unverified, and signing up again sends a new link.
+const sendVerificationEmailOrFail = async (email: string, token: string) => {
+  if (!(await sendVerificationEmail(email, token))) {
+    throw new AppError("We couldn't send the verification email. Please try again in a few minutes.", 503);
+  }
+};
+
 export const register = async (email: string, password: string) => {
   const existingUser = await User.findOne({ email });
 
@@ -51,7 +59,7 @@ export const register = async (email: string, password: string) => {
     existingUser.verificationToken = verificationToken;
     existingUser.verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await existingUser.save();
-    await sendVerificationEmail(email, verificationToken);
+    await sendVerificationEmailOrFail(email, verificationToken);
     return;
   }
 
@@ -65,7 +73,7 @@ export const register = async (email: string, password: string) => {
     verificationToken,
     verificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
-  await sendVerificationEmail(email, verificationToken);
+  await sendVerificationEmailOrFail(email, verificationToken);
 };
 
 export const verifyEmail = async (token: string) => {
@@ -150,6 +158,7 @@ export const forgotPassword = async (email: string) => {
   user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
   await user.save();
 
+  // A failure is only logged (in the mailer), so the answer never reveals whether an account exists
   await sendPasswordResetEmail(email, resetToken);
 };
 
