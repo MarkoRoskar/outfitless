@@ -1,0 +1,8 @@
+# Store every text file with Unix line endings in git, whatever the editor uses, so a change
+# never shows up as the whole file changing
+* text=auto eol=lf
+
+# Binary files are stored as they are
+*.webp binary
+*.png binary
+*.jpg binary

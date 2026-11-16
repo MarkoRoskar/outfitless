@@ -1,0 +1,39 @@
+import { Routes, Route } from 'react-router-dom'
+import HomePage from './pages/HomePage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import WorkoutsPage from './pages/WorkoutsPage'
+import WorkoutDetailPage from './pages/WorkoutDetailPage'
+import SessionPage from './pages/SessionPage'
+import HistoryPage from './pages/HistoryPage'
+import RoutinesPage from './pages/RoutinesPage'
+import ExercisesPage from './pages/ExercisesPage'
+import NotFoundPage from './pages/NotFoundPage'
+import SettingsPage from './pages/SettingsPage'
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/workouts" element={<WorkoutsPage />} />
+      <Route path="/workouts/:id" element={<WorkoutDetailPage />} />
+      <Route path="/sessions/:id" element={<SessionPage />} />
+      <Route path="/history" element={<HistoryPage />} />
+      <Route path="/routines" element={<RoutinesPage />} />
+      <Route path="/exercises" element={<ExercisesPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      {/* Any other address, like an old or mistyped link */}
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  )
+}
+
+export default App

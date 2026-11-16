@@ -1,0 +1,27 @@
+# Installed packages
+node_modules/
+
+# Secrets: server/.env holds the database password and API keys
+.env
+.env.*
+*.local
+
+# Build output
+dist/
+dist-ssr/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Editor and system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.sw?
+
+# Settings for AI coding tools, kept on this computer only
+.agents/
+skills-lock.json
