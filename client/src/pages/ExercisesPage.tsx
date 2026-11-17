@@ -20,6 +20,7 @@ import PageBackdrop from '../components/PageBackdrop'
 import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
+import Loading from '../components/Loading'
 
 // Exercise as returned by the API (_id is MongoDB's ID field)
 interface Exercise {
@@ -407,7 +408,7 @@ export default function ExercisesPage() {
         </div>
 
         {status === 'loading' && (
-          <p className="text-sm text-zinc-400">Loading…</p>
+          <Loading>Loading your exercises…</Loading>
         )}
 
         {status === 'error' && (

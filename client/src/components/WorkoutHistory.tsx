@@ -15,6 +15,7 @@ import RecordBadge from './RecordBadge'
 import LoadError from './LoadError'
 import Select from './Select'
 import DatePicker from './DatePicker'
+import Loading, { Spinner } from './Loading'
 
 interface LoggedSet {
   reps: number
@@ -359,7 +360,7 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
       )}
 
       {status === 'loading' && (
-        <p className="text-sm text-zinc-400">Loading…</p>
+        <Loading>Loading your history…</Loading>
       )}
 
       {status === 'error' && (
@@ -404,8 +405,8 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
       )}
 
       {limit === undefined && status === 'ready' && hasMore && sessions.length > 0 && (
-        <button onClick={loadMore} disabled={loadingMore} className={`self-center ${secondaryButton}`}>
-          {loadingMore ? 'Loading…' : 'Show more'}
+        <button onClick={loadMore} disabled={loadingMore} className={`self-center inline-flex items-center gap-2 ${secondaryButton}`}>
+          {loadingMore ? <><Spinner />Loading…</> : 'Show more'}
         </button>
       )}
 

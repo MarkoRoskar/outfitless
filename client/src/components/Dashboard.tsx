@@ -13,6 +13,7 @@ import type { FinishedSessionsPage } from './WorkoutHistory'
 import LoadError from './LoadError'
 import PageHelp from './PageHelp'
 import { helpText } from '../lib/helpText'
+import Loading from './Loading'
 
 interface Named {
   _id: string
@@ -189,7 +190,7 @@ export default function Dashboard() {
         </div>
 
         {status === 'loading' && (
-          <p className="text-sm text-zinc-400">Loading your training…</p>
+          <Loading>Loading your training…</Loading>
         )}
 
         {status === 'error' && (

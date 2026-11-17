@@ -21,6 +21,7 @@ import PageBackdrop from '../components/PageBackdrop'
 import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
+import Loading from '../components/Loading'
 
 // Workout as returned by the API
 interface Workout {
@@ -350,7 +351,7 @@ export default function WorkoutsPage() {
         </div>
 
         {status === 'loading' && (
-          <p className="text-sm text-zinc-400">Loading…</p>
+          <Loading>Loading your workouts…</Loading>
         )}
 
         {status === 'error' && (

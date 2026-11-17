@@ -23,6 +23,7 @@ import PageBackdrop from '../components/PageBackdrop'
 import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
+import Loading from '../components/Loading'
 
 // Routine as returned by the API. workouts holds workout IDs in the order they're done,
 // and the same ID can appear more than once.
@@ -575,7 +576,7 @@ export default function RoutinesPage() {
         )}
 
         {status === 'loading' && (
-          <p className="text-sm text-zinc-400">Loading…</p>
+          <Loading>Loading your routines…</Loading>
         )}
 
         {status === 'error' && (

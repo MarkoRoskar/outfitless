@@ -25,6 +25,7 @@ import PageBackdrop from '../components/PageBackdrop'
 import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
+import Loading from '../components/Loading'
 
 // Loaded separately, so the chart library only downloads once Progress is opened
 const WorkoutProgressChart = lazy(() => import('../components/WorkoutProgressChart'))
@@ -83,7 +84,7 @@ function ProgressSection({ workoutId }: { workoutId: string }) {
       </h2>
       <div id={contentId} hidden={!open}>
         {opened && (
-          <Suspense fallback={<p className="text-sm text-zinc-400">Loading progress…</p>}>
+          <Suspense fallback={<Loading>Loading your progress…</Loading>}>
             <WorkoutProgressChart key={workoutId} workoutId={workoutId} />
           </Suspense>
         )}
@@ -644,7 +645,7 @@ export default function WorkoutDetailPage() {
       <main className="relative flex flex-col flex-1 max-w-3xl mx-auto w-full px-6 sm:px-10 pt-8 pb-16 sm:pt-16 gap-6">
 
         {status === 'loading' && (
-          <p className="text-sm text-zinc-400">Loading workout…</p>
+          <Loading>Loading your workout…</Loading>
         )}
 
         {status === 'notFound' && (

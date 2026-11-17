@@ -8,6 +8,7 @@ import { card, secondaryButton } from '../lib/styles'
 import { useAuthStore } from '../store/authStore'
 import { ChevronDownIcon } from './icons'
 import LoadError from './LoadError'
+import Loading from './Loading'
 
 // The palette has 8 colors that stay distinct, including for colorblind users, so up to 8
 // exercises are drawn at once. A workout can have more: any of them can be switched on, as long
@@ -281,7 +282,7 @@ export default function WorkoutProgressChart({ workoutId }: { workoutId: string 
     // The Progress heading that opens this is on the workout's page
     <section className="flex flex-col gap-3">
 
-      {status === 'loading' && <p className={message}>Loading progress…</p>}
+      {status === 'loading' && <Loading>Loading your progress…</Loading>}
 
       {status === 'error' && (
         <LoadError what="your progress" onRetry={() => { setStatus('loading'); setAttempt((a) => a + 1) }} />

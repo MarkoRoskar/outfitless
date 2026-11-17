@@ -5,6 +5,9 @@ services:
     name: outfitless
     runtime: node
     plan: free
+    # Next to the MongoDB Atlas database (in Europe). Every request makes several database queries,
+    # so a server on another continent made each one wait for ocean crossings.
+    region: frankfurt
     # Both builds need their dev tools (TypeScript, Vite), so they're installed even though
     # NODE_ENV is production
     buildCommand: >-

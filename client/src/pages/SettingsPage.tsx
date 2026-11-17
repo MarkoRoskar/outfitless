@@ -13,6 +13,7 @@ import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
 import PageHelp from '../components/PageHelp'
 import PasswordInput from '../components/PasswordInput'
+import Loading from '../components/Loading'
 
 interface Account {
   email: string
@@ -215,7 +216,7 @@ export default function SettingsPage() {
           <PageHelp {...helpText.settings} />
         </div>
 
-        {status === 'loading' && <p className="text-sm text-zinc-400">Loading…</p>}
+        {status === 'loading' && <Loading>Loading your settings…</Loading>}
         {status === 'error' && (
           <LoadError what="your account" onRetry={() => { setStatus('loading'); setAttempt((a) => a + 1) }} />
         )}

@@ -18,6 +18,7 @@ import PageBackdrop from '../components/PageBackdrop'
 import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
+import Loading from '../components/Loading'
 
 interface LoggedSet {
   reps: number
@@ -525,7 +526,7 @@ export default function SessionPage() {
       <main className="relative flex flex-col flex-1 max-w-lg mx-auto w-full px-6 sm:px-10 pt-8 pb-16 sm:pt-16 gap-6">
 
         {status === 'loading' && (
-          <p className="text-sm text-zinc-400">Loading workout…</p>
+          <Loading>Loading your workout…</Loading>
         )}
 
         {status === 'notFound' && (
