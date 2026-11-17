@@ -2,6 +2,17 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// The server can't work without these, so a missing one stops it at once with a clear message,
+// rather than failing later on someone's login. Online, the secret that signs logins must be long.
+for (const name of ["MONGO_URL", "JWT_SECRET"]) {
+    if (!process.env[name]) {
+        throw new Error(`${name} is not set. Add it to server/.env, or to the host's environment settings.`);
+    }
+}
+if (process.env.NODE_ENV === "production" && process.env.JWT_SECRET!.length < 32) {
+    throw new Error("JWT_SECRET must be at least 32 characters in production.");
+}
+
 export const env = {
     PORT: process.env.PORT || 3000,
     MONGO_URL: process.env.MONGO_URL!,

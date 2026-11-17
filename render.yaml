@@ -1,0 +1,34 @@
+# Render setup for outFITless: one free web service that builds the app and the API and runs the
+# API, which also serves the app. In Render: New → Blueprint, then pick this repository.
+services:
+  - type: web
+    name: outfitless
+    runtime: node
+    plan: free
+    # Both builds need their dev tools (TypeScript, Vite), so they're installed even though
+    # NODE_ENV is production
+    buildCommand: >-
+      cd client && npm ci --include=dev && npm run build &&
+      cd ../server && npm ci --include=dev && npm run build
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: EMAIL_PROVIDER
+        value: gmail
+      # Render makes a long random secret for signing logins
+      - key: JWT_SECRET
+        generateValue: true
+      # These are asked for when the Blueprint is created (sync: false keeps them out of this file)
+      - key: MONGO_URL
+        sync: false
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      # The app's own address, used in email links, like https://outfitless.onrender.com
+      - key: CLIENT_URL
+        sync: false
