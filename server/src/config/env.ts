@@ -21,22 +21,11 @@ export const env = {
     CLIENT_URL: (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, ''),
     NODE_ENV: process.env.NODE_ENV || 'development',
 
-    // EMAIL. EMAIL_PROVIDER picks how emails are sent:
-    // - "gmail": through a Gmail account, with GMAIL_USER and a GMAIL_APP_PASSWORD (an app
-    //   password from the account's security settings, not its normal password)
-    //   Gmail is reached over SMTP, which Render's free plan blocks, so it only works locally there.
-    // - "brevo": through Brevo's web API, with BREVO_API_KEY. Works on free hosting, and sends from
-    //   an address verified in Brevo (BREVO_SENDER, or GMAIL_USER when that's not set).
-    // - "resend" (the default): through Resend, with RESEND_API_KEY
-    EMAIL_PROVIDER: (['gmail', 'brevo'] as const).find((p) => p === process.env.EMAIL_PROVIDER) ?? 'resend',
+    // EMAIL, sent through this Gmail account's web API (see common/email/mailer.ts). The client ID
+    // and secret come from a Google Cloud OAuth client, and the refresh token from running
+    // scripts/get-gmail-token.mjs once.
     GMAIL_USER: process.env.GMAIL_USER,
-    GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
-    BREVO_API_KEY: process.env.BREVO_API_KEY,
-    BREVO_SENDER: process.env.BREVO_SENDER ?? process.env.GMAIL_USER,
-    RESEND_API_KEY: process.env.RESEND_API_KEY,
-    // Who emails come from, like "outFITless <hello@yourdomain.com>". With Gmail it defaults to
-    // the Gmail address (Gmail sends from that address anyway). With Resend the address must be on
-    // a domain verified in Resend, and the default is Resend's test sender, which only delivers
-    // to the Resend account's own email.
-    EMAIL_FROM: process.env.EMAIL_FROM,
+    GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID,
+    GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET,
+    GMAIL_REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN,
 } as const;

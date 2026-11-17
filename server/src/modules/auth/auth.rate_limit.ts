@@ -16,7 +16,7 @@ const limiter = (windowMs: number, limit: number, skipSuccessfulRequests = false
 // Only failed logins count, so logging in normally never uses this up
 export const loginLimiter = limiter(FIFTEEN_MINUTES, 10, true);
 
-// These send emails, so they also protect people's inboxes and the Resend quota
+// These send emails, so they also protect people's inboxes and the Gmail account's daily sending limit
 export const registerLimiter = limiter(ONE_HOUR, 10);
 export const forgotPasswordLimiter = limiter(ONE_HOUR, 5);
 

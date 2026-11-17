@@ -20,7 +20,7 @@ less when you can't reach it.
 | Folder | What's in it |
 |---|---|
 | `client/` | The app: React 19, TypeScript, Vite, Tailwind CSS 4, React Router, Zustand, Recharts |
-| `server/` | The API: Node, Express 5, MongoDB with Mongoose, Zod, JWT login, Resend for email |
+| `server/` | The API: Node, Express 5, MongoDB with Mongoose, Zod, JWT login, the Gmail API for email |
 
 ## Running it locally
 
@@ -34,16 +34,16 @@ You need Node.js and a MongoDB database (local or MongoDB Atlas).
    | `JWT_SECRET` | A long random string used to sign logins |
    | `PORT` | Port the API listens on. The client expects `5000`. |
    | `CLIENT_URL` | Address of the client, used in email links. Defaults to `http://localhost:5173`. |
-   | `EMAIL_PROVIDER` | How verification and password emails are sent: `gmail`, `brevo` or `resend` (the default) |
-   | `GMAIL_USER` | With Gmail: the Gmail address emails are sent from |
-   | `GMAIL_APP_PASSWORD` | With Gmail: an app password for that account (see below), not its normal password |
-   | `BREVO_API_KEY` | With Brevo: API key from [Brevo](https://www.brevo.com) (free, 300 emails a day, no domain needed) |
-   | `BREVO_SENDER` | With Brevo: the sender address verified in Brevo. Defaults to `GMAIL_USER`. |
-   | `RESEND_API_KEY` | With Resend: API key from [Resend](https://resend.com). Needs a domain verified there to email anyone but yourself. |
-   | `EMAIL_FROM` | Optional sender, like `outFITless <hello@yourdomain.com>`. With Gmail it defaults to the Gmail address. |
+   | `GMAIL_USER` | The Gmail address verification and password emails are sent from |
+   | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` | A Google Cloud OAuth client (type Desktop app) for the Gmail API, see below |
+   | `GMAIL_REFRESH_TOKEN` | The Gmail account's permission to send, from `node scripts/get-gmail-token.mjs` |
 
-   To send with Gmail, turn on 2-step verification for the account, then create an app password
-   at https://myaccount.google.com/apppasswords and put its 16 characters in `GMAIL_APP_PASSWORD`.
+   Emails go through the Gmail API over HTTPS, because free hosts like Render block SMTP. To set
+   it up once, signed in as the Gmail account: in https://console.cloud.google.com create a
+   project, enable the **Gmail API**, set up the OAuth consent screen (External, with the privacy
+   page `/privacy`) and **publish** it (in Testing the token stops working after 7 days), then
+   create an OAuth client of type **Desktop app**. Put its ID and secret in `server/.env`, run
+   `node scripts/get-gmail-token.mjs` in `server/` and put the token it prints in `server/.env`.
 
    Then start it:
 
@@ -72,9 +72,8 @@ built app, so everything is on one address. `render.yaml` has the whole setup.
 1. **Render**: sign up at https://render.com with GitHub, then **New → Blueprint** and pick this
    repository. Render reads `render.yaml` and asks for:
    - `MONGO_URL`: the same Atlas connection string as in `server/.env`
-   - `BREVO_API_KEY`: from Brevo (SMTP & API → API keys). Render's free plan blocks SMTP, so
-     Gmail can't send from there; Brevo sends over HTTPS instead.
-   - `GMAIL_USER`: the address emails come from, added and verified as a sender in Brevo
+   - `GMAIL_USER`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`: the same as in
+     `server/.env`
    - `CLIENT_URL`: the service's address, like `https://outfitless.onrender.com` (you see it after
      creating; set it then and redeploy)
 
