@@ -20,17 +20,19 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22"
+      # Brevo sends over HTTPS. Gmail can't be used here: Render's free plan blocks SMTP.
       - key: EMAIL_PROVIDER
-        value: gmail
+        value: brevo
       # Render makes a long random secret for signing logins
       - key: JWT_SECRET
         generateValue: true
       # These are asked for when the Blueprint is created (sync: false keeps them out of this file)
       - key: MONGO_URL
         sync: false
-      - key: GMAIL_USER
+      - key: BREVO_API_KEY
         sync: false
-      - key: GMAIL_APP_PASSWORD
+      # The sender address verified in Brevo
+      - key: GMAIL_USER
         sync: false
       # The app's own address, used in email links, like https://outfitless.onrender.com
       - key: CLIENT_URL

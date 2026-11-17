@@ -21,6 +21,9 @@ const logo = fs.readFileSync(path.resolve(__dirname, '../../../assets/email-logo
 // One way of sending. Returns an error message, or null when the email was accepted.
 type Sender = (email: Email) => Promise<string | null>
 
+// How long sending may take before it counts as failed, so a request never waits on it for long
+const SEND_TIMEOUT_MS = 10_000
+
 // Through a Gmail account over SMTP, signed in with an app password
 const gmailSender = (): Sender => {
   if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
@@ -31,6 +34,11 @@ const gmailSender = (): Sender => {
     port: 465,
     secure: true,
     auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
+    // Where SMTP is blocked (like Render's free plan) the connection never opens. Without these
+    // limits sign-up would hang for minutes instead of reporting the failure.
+    connectionTimeout: SEND_TIMEOUT_MS,
+    greetingTimeout: SEND_TIMEOUT_MS,
+    socketTimeout: SEND_TIMEOUT_MS,
   })
   // Gmail always sends from the account's own address, so that's the default
   const from = env.EMAIL_FROM ?? `outFITless <${env.GMAIL_USER}>`
@@ -62,12 +70,40 @@ const resendSender = (): Sender => {
   }
 }
 
-const send: Sender = env.EMAIL_PROVIDER === 'gmail' ? gmailSender() : resendSender()
+// Through Brevo's web API over HTTPS, which free hosts don't block like SMTP. Brevo can't attach
+// the logo the way the others do, so the email shows it from the app's own address instead
+// (client/public/email-logo.png).
+const brevoSender = (): Sender => {
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER) {
+    return async () => 'BREVO_API_KEY and BREVO_SENDER (or GMAIL_USER) must be set in .env'
+  }
+  const apiKey = env.BREVO_API_KEY
+  const sender = { name: 'outFITless', email: env.BREVO_SENDER }
+  return async (email) => {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': apiKey, 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: email.to }],
+        subject: email.subject,
+        htmlContent: email.html,
+        textContent: email.text,
+      }),
+      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+    })
+    return res.ok ? null : `Brevo answered ${res.status}: ${await res.text()}`
+  }
+}
+
+const senders = { gmail: gmailSender, brevo: brevoSender, resend: resendSender }
+const send: Sender = senders[env.EMAIL_PROVIDER]()
+const logoSrc = env.EMAIL_PROVIDER === 'brevo' ? `${env.CLIENT_URL}/email-logo.png` : undefined
 
 // Sends one email in the app's design and says whether it was accepted. A failure is logged with the reason.
 const sendEmail = async (to: string, subject: string, content: EmailContent) => {
   try {
-    const error = await send({ to, subject, ...renderEmail(content) })
+    const error = await send({ to, subject, ...renderEmail(content, logoSrc) })
     if (error) {
       console.error(`Email "${subject}" was not sent:`, error)
       return false

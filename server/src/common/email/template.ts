@@ -3,7 +3,8 @@
 // HTML, so it's built from tables with inline styles, and the logo is an attached PNG (most email
 // apps don't show SVG). The plain-text version goes along for apps that don't show HTML.
 
-// Referenced as cid:<LOGO_CID> in the HTML; the mailer attaches the image under this id
+// Referenced as cid:<LOGO_CID> in the HTML; the mailer attaches the image under this id. A sender
+// that can't attach images that way passes the logo's web address to renderEmail instead.
 export const LOGO_CID = 'outfitless-logo'
 
 const colors = {
@@ -32,7 +33,10 @@ export interface EmailContent {
   note: string
 }
 
-export const renderEmail = ({ preview, heading, intro, buttonLabel, url, note }: EmailContent) => {
+export const renderEmail = (
+  { preview, heading, intro, buttonLabel, url, note }: EmailContent,
+  logoSrc = `cid:${LOGO_CID}`,
+) => {
   const link = escape(url)
 
   const html = `<!DOCTYPE html>
@@ -53,7 +57,7 @@ export const renderEmail = ({ preview, heading, intro, buttonLabel, url, note }:
 
           <tr>
             <td align="center" style="padding-bottom:24px;">
-              <img src="cid:${LOGO_CID}" width="56" height="61" alt="" style="display:block;border:0;">
+              <img src="${escape(logoSrc)}" width="56" height="61" alt="" style="display:block;border:0;">
               <div style="margin-top:12px;font-family:${font};font-size:24px;font-weight:800;letter-spacing:-0.5px;color:${colors.text};">
                 out<span style="color:${colors.accent};">FIT</span>less
               </div>

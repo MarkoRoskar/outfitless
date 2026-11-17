@@ -34,9 +34,11 @@ You need Node.js and a MongoDB database (local or MongoDB Atlas).
    | `JWT_SECRET` | A long random string used to sign logins |
    | `PORT` | Port the API listens on. The client expects `5000`. |
    | `CLIENT_URL` | Address of the client, used in email links. Defaults to `http://localhost:5173`. |
-   | `EMAIL_PROVIDER` | How verification and password emails are sent: `gmail` or `resend` (the default) |
+   | `EMAIL_PROVIDER` | How verification and password emails are sent: `gmail`, `brevo` or `resend` (the default) |
    | `GMAIL_USER` | With Gmail: the Gmail address emails are sent from |
    | `GMAIL_APP_PASSWORD` | With Gmail: an app password for that account (see below), not its normal password |
+   | `BREVO_API_KEY` | With Brevo: API key from [Brevo](https://www.brevo.com) (free, 300 emails a day, no domain needed) |
+   | `BREVO_SENDER` | With Brevo: the sender address verified in Brevo. Defaults to `GMAIL_USER`. |
    | `RESEND_API_KEY` | With Resend: API key from [Resend](https://resend.com). Needs a domain verified there to email anyone but yourself. |
    | `EMAIL_FROM` | Optional sender, like `outFITless <hello@yourdomain.com>`. With Gmail it defaults to the Gmail address. |
 
@@ -70,7 +72,9 @@ built app, so everything is on one address. `render.yaml` has the whole setup.
 1. **Render**: sign up at https://render.com with GitHub, then **New → Blueprint** and pick this
    repository. Render reads `render.yaml` and asks for:
    - `MONGO_URL`: the same Atlas connection string as in `server/.env`
-   - `GMAIL_USER` and `GMAIL_APP_PASSWORD`: the same as in `server/.env`
+   - `BREVO_API_KEY`: from Brevo (SMTP & API → API keys). Render's free plan blocks SMTP, so
+     Gmail can't send from there; Brevo sends over HTTPS instead.
+   - `GMAIL_USER`: the address emails come from, added and verified as a sender in Brevo
    - `CLIENT_URL`: the service's address, like `https://outfitless.onrender.com` (you see it after
      creating; set it then and redeploy)
 

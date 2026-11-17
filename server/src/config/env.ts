@@ -23,10 +23,15 @@ export const env = {
     // EMAIL. EMAIL_PROVIDER picks how emails are sent:
     // - "gmail": through a Gmail account, with GMAIL_USER and a GMAIL_APP_PASSWORD (an app
     //   password from the account's security settings, not its normal password)
+    //   Gmail is reached over SMTP, which Render's free plan blocks, so it only works locally there.
+    // - "brevo": through Brevo's web API, with BREVO_API_KEY. Works on free hosting, and sends from
+    //   an address verified in Brevo (BREVO_SENDER, or GMAIL_USER when that's not set).
     // - "resend" (the default): through Resend, with RESEND_API_KEY
-    EMAIL_PROVIDER: process.env.EMAIL_PROVIDER === 'gmail' ? 'gmail' : 'resend',
+    EMAIL_PROVIDER: (['gmail', 'brevo'] as const).find((p) => p === process.env.EMAIL_PROVIDER) ?? 'resend',
     GMAIL_USER: process.env.GMAIL_USER,
     GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
+    BREVO_API_KEY: process.env.BREVO_API_KEY,
+    BREVO_SENDER: process.env.BREVO_SENDER ?? process.env.GMAIL_USER,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     // Who emails come from, like "outFITless <hello@yourdomain.com>". With Gmail it defaults to
     // the Gmail address (Gmail sends from that address anyway). With Resend the address must be on
