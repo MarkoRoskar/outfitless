@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
 // A small spinning ring in the app's light green, for anything that's loading, like inside a button.
@@ -11,9 +12,23 @@ export function Spinner() {
   )
 }
 
+// How long a page can load before the message appears. Most loads finish sooner, and showing
+// the message for a split second would just flicker.
+const SHOW_AFTER_MS = 300
+
 // Shown while a page or section loads: the spinner and what's loading, like "Loading your
-// workouts…". role="status" lets screen readers announce it.
+// workouts…". It only appears when loading takes longer than SHOW_AFTER_MS. role="status" lets
+// screen readers announce it.
 export default function Loading({ children }: { children: ReactNode }) {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), SHOW_AFTER_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (!visible) return null
+
   return (
     <p role="status" className="flex items-center gap-2.5 text-sm text-zinc-400">
       <Spinner />
