@@ -17,7 +17,8 @@ export const env = {
     PORT: process.env.PORT || 3000,
     MONGO_URL: process.env.MONGO_URL!,
     JWT_SECRET: process.env.JWT_SECRET!,
-    CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+    // Without a slash at the end, so email links like `${CLIENT_URL}/verify-email` never get "//"
+    CLIENT_URL: (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, ''),
     NODE_ENV: process.env.NODE_ENV || 'development',
 
     // EMAIL. EMAIL_PROVIDER picks how emails are sent:
