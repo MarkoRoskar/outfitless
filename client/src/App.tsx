@@ -13,6 +13,7 @@ import RoutinesPage from './pages/RoutinesPage'
 import ExercisesPage from './pages/ExercisesPage'
 import NotFoundPage from './pages/NotFoundPage'
 import SettingsPage from './pages/SettingsPage'
+import PrivacyPage from './pages/PrivacyPage'
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
       <Route path="/routines" element={<RoutinesPage />} />
       <Route path="/exercises" element={<ExercisesPage />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       {/* Any other address, like an old or mistyped link */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
