@@ -4,7 +4,8 @@ import { useAuthStore } from '../store/authStore'
 import Dashboard from '../components/Dashboard'
 import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
-import background from '../assets/background-hero.webp'
+// The taller version of the photo, with the whole person and rack, for the full first screen
+import heroPhoto from '../assets/background-hero_bigger.webp'
 import { accentButton, bodyText, eyebrow, primaryButton, softPill } from '../lib/styles'
 import { ArrowRightIcon } from '../components/icons'
 import Reveal from '../components/Reveal'
@@ -13,6 +14,20 @@ import SessionPreview from '../components/SessionPreview'
 
 // Section titles on the homepage are a step bigger than page titles elsewhere; the label and body text are shared
 const sectionTitle = 'text-3xl md:text-4xl font-semibold tracking-tight leading-[1.1]'
+
+// The hero photo is 2560 × 1429. The part below the navbar used to be a shorter crop of it, its
+// bottom 940 rows, scaled to cover the screen below the navbar (H) and centered. That's kept: the
+// photo gets the same scale and is shifted so the crop lines up with the navbar's bottom edge,
+// which leaves the 489 rows above it (the head) behind the navbar. The scale is whichever is
+// larger, H / 940 or the width / 2560, like background-size: cover did for the crop.
+const H = '(100svh - 3.5rem)'
+const SCALE = `max(${H} / 940, 100vw / 2560)`
+const heroPhotoStyle = {
+  backgroundImage: `url(${heroPhoto})`,
+  backgroundSize: `auto calc(1429 * ${SCALE})`,
+  // The crop's top at the navbar's bottom (3.5rem), centered on H as cover centered it
+  backgroundPosition: `center calc(3.5rem + ${H} / 2 - 959 * ${SCALE})`,
+}
 
 // A routine is an ordered list that rotates, not a weekly calendar, so the preview shows
 // positions and a Next marker like the real Routines page
@@ -158,14 +173,13 @@ export default function HomePage() {
       {/* The app's darkened photo, behind the sections below the hero */}
       <PageBackdrop />
 
-      {/* Hero: a full-screen photo. bg-cover fills any screen shape by cropping the edges,
-          and bg-center keeps the person in the middle visible on narrow phones. Its height uses
-          svh, the screen with the phone's address bar showing, which doesn't change while
-          scrolling. With dvh it grew and shrank as the bar slid in and out, and the photo zoomed. */}
-      <section
-        className="relative flex min-h-[calc(100svh-3.5rem)] bg-zinc-950 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${background})` }}
-      >
+      {/* Hero: a full-screen photo, pulled up under the navbar (-mt-14, the navbar's height) so
+          the photo shows through the navbar's see-through background too. It's placed with
+          heroPhotoStyle so the screen below the navbar shows exactly the old, shorter crop, and
+          the rest of the photo (the person's head) sits behind the navbar. Its height uses svh,
+          the screen with the phone's address bar showing, which doesn't change while scrolling.
+          With dvh it grew and shrank as the bar slid in and out, and the photo zoomed. */}
+      <section className="relative -mt-14 flex min-h-svh bg-zinc-950 bg-no-repeat" style={heroPhotoStyle}>
         {/* Darkens the whole photo, most at the bottom where the text sits, so it isn't much brighter
             than the darkened photo behind the other pages */}
         <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/78 to-black/70" />
