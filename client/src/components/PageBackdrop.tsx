@@ -2,12 +2,14 @@ import background from '../assets/background-hero.webp'
 
 // The homepage's photo behind the whole screen, darkened so text and the see-through cards
 // stay easy to read anywhere on it. It's fixed, so it stays put while the page scrolls over it.
+// Its height is lvh, the screen with the phone's address bar hidden, so it covers the screen
+// either way and doesn't resize (and zoom the photo) as the bar slides in and out.
 // Put it right after <Navbar />. The page's <main> needs `relative` to be drawn above it.
 export default function PageBackdrop() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 bg-zinc-950 bg-cover bg-center bg-no-repeat"
+      className="pointer-events-none fixed inset-x-0 top-0 h-lvh bg-zinc-950 bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: `url(${background})` }}
     >
       {/* Phones: one top-to-bottom fade instead of the side fade below, because the cards fill

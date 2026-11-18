@@ -6,9 +6,15 @@ export function unlockSound() {
   audioContext.resume().catch(() => {})
 }
 
-// Three short beeps, made in code so there's no audio file to load
+// The rest timer's beep, if it's switched on (in Settings or on the timer)
 export function playRestEndSound() {
-  if (!audioContext || !isRestSoundOn()) return
+  if (isRestSoundOn()) playBeeps()
+}
+
+// Three short beeps, made in code so there's no audio file to load. Silent until unlockSound has
+// run from a click.
+export function playBeeps() {
+  if (!audioContext) return
 
   for (let i = 0; i < 3; i++) {
     const start = audioContext.currentTime + i * 0.25

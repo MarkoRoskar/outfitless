@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Tailwind 4 gives buttons the plain arrow cursor. Every clickable button gets the hand instead,
+   so it's clear it can be clicked; disabled ones keep their own cursor. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 @theme {
   /* Palette: white #FFFFFF, fit green #AFFA00, fit green 40% #CFED89,
      black 88% #1C1C1C, black #000000 */
@@ -102,5 +111,218 @@ body {
 @media (width < 48rem) {
   body:has([data-tab-bar]) {
     padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Scroll reveal (components/Reveal.tsx): things fade in and rise into place when they come
+   into view, one after another via --reveal-delay. "pop" also grows from slightly smaller.
+   The easing starts fast and settles gently, so it feels like a pop rather than a slide. */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 450ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal[data-variant='pop'] {
+  transform: translateY(16px) scale(0.9);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+/* "none" only marks when it's in view, for children with animations of their own */
+.reveal[data-variant='none'] {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+/* The homepage logo does a rep: it starts low and squashed under the load, presses up slowly
+   with a strain wobble, then snaps to lockout, overshooting a little before it settles. It
+   squashes from its bottom edge. On lockout it glows fit green (the 0 8px 24px black shadow is
+   the logo's own, from HomePage.tsx), and the ring behind it pulses out like a completed set. */
+@keyframes rep-press {
+  0% { opacity: 0; transform: translateY(36px) scale(1.12, 0.82); filter: drop-shadow(0 8px 24px rgb(0 0 0 / 0.6)); }
+  14% { opacity: 1; transform: translateY(36px) scale(1.12, 0.82); animation-timing-function: ease-in-out; }
+  28% { transform: translateY(24px) scale(1.08, 0.88) rotate(-2deg); animation-timing-function: ease-in-out; }
+  40% { transform: translateY(14px) scale(1.05, 0.93) rotate(2deg); animation-timing-function: ease-in-out; }
+  50% {
+    transform: translateY(8px) scale(1.03, 0.96) rotate(-1deg);
+    filter: drop-shadow(0 8px 24px rgb(0 0 0 / 0.6));
+    animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+  60% {
+    transform: translateY(-14px) scale(0.94, 1.08);
+    filter: drop-shadow(0 0 28px rgb(175 250 0 / 0.75));
+  }
+  72% { transform: translateY(0) scale(1.04, 0.96); }
+  84% { transform: translateY(-2px) scale(0.99, 1.01); }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: drop-shadow(0 8px 24px rgb(0 0 0 / 0.6));
+  }
+}
+@keyframes rep-ring {
+  0% { opacity: 0.9; transform: scale(0.85); }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+.rep-press {
+  opacity: 0;
+  transform-origin: 50% 100%;
+}
+.is-visible .rep-press {
+  animation: rep-press 1400ms both;
+}
+.rep-ring {
+  opacity: 0;
+}
+/* Starts at lockout, 60% into the rep */
+.is-visible .rep-ring {
+  /* forwards, not both: during the wait it stays hidden instead of showing its first frame */
+  animation: rep-ring 750ms cubic-bezier(0.22, 1, 0.36, 1) 840ms forwards;
+}
+
+/* The name under the logo comes in once the rep locks out (60% into its 1400ms): it fades in and
+   rises a little into place, like the text beside it */
+@keyframes name-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.name-rise {
+  opacity: 0;
+}
+.is-visible .name-rise {
+  animation: name-rise 450ms cubic-bezier(0.22, 1, 0.36, 1) 840ms both;
+}
+
+/* The homepage chart: each line draws itself from left to right, then its dots pop in as the line
+   reaches them. They're keyframe animations, so a line drawn again (when the chosen exercises
+   change) plays them again. pathLength="1" on the line makes a dash of length 1 cover all of it.
+   --draw-delay holds the drawing until the card has popped in. */
+@keyframes draw-line {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes pop-dot {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: scale(1); }
+}
+.draw-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.is-visible .draw-line {
+  animation: draw-line 800ms cubic-bezier(0.65, 0, 0.35, 1) var(--draw-delay, 0ms) both;
+}
+.pop-dot {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.is-visible .pop-dot {
+  animation: pop-dot 500ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--reveal-delay, 0ms) both;
+}
+
+/* The homepage rest timer's last 3 seconds: each one pops bigger with a fit-green glow, then settles */
+@keyframes timer-pulse {
+  0% { transform: scale(1.3); text-shadow: 0 0 18px rgb(175 250 0 / 0.85); }
+  100% { transform: scale(1); text-shadow: 0 0 0 rgb(175 250 0 / 0); }
+}
+.timer-pulse {
+  animation: timer-pulse 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The homepage session's "next time" chip, at the card's top right: it pops up from a little
+   below, overshooting, and settles into place */
+@keyframes next-time-chip {
+  0% { opacity: 0; transform: translateY(14px) scale(0.6); }
+  45% { opacity: 1; transform: translateY(-4px) scale(1.08); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.next-time-chip {
+  animation: next-time-chip 600ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
+}
+
+/* The homepage chart's hover trail: the stretch of line around a session the pointer passes
+   lights up thick and bright, then fades and thins back into the line, over 900ms (TRAIL_MS in
+   ProgressChartPreview.tsx) */
+@keyframes trail-glow {
+  from { opacity: 0.9; stroke-width: 7px; }
+  to { opacity: 0; stroke-width: 2px; }
+}
+.trail-glow {
+  animation: trail-glow 900ms ease-out forwards;
+  pointer-events: none;
+}
+
+/* The homepage routine's workout pulses as the Next label lands on it: its name pops a little
+   bigger and flashes fit green. The slide takes 500ms (HomePage.tsx), so it starts just before
+   the label arrives. */
+@keyframes land-pulse {
+  0% { transform: scale(1); color: inherit; text-shadow: 0 0 0 rgb(175 250 0 / 0); }
+  40% { transform: scale(1.1); color: var(--color-accent); text-shadow: 0 0 16px rgb(175 250 0 / 0.6); }
+  100% { transform: scale(1); color: inherit; text-shadow: 0 0 0 rgb(175 250 0 / 0); }
+}
+.land-pulse {
+  animation: land-pulse 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 300ms;
+}
+
+/* ...and its row flashes a soft green background at the same moment */
+@keyframes row-flash {
+  0% { background-color: rgb(175 250 0 / 0); }
+  35% { background-color: rgb(175 250 0 / 0.12); }
+  100% { background-color: rgb(175 250 0 / 0); }
+}
+.row-flash {
+  animation: row-flash 600ms ease-out 300ms;
+}
+
+/* ...and the Next label itself gives a quick small pulse as it arrives */
+@keyframes label-tap {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.label-tap {
+  animation: label-tap 220ms ease-out 300ms;
+}
+
+/* For people who turn off animations in their system settings, everything is simply there */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal.is-visible,
+  .rep-press,
+  .is-visible .rep-press,
+  .name-rise,
+  .is-visible .name-rise,
+  .rep-ring,
+  .is-visible .rep-ring,
+  .draw-line,
+  .pop-dot,
+  .is-visible .draw-line,
+  .is-visible .pop-dot,
+  .timer-pulse,
+  .next-time-chip,
+  .land-pulse,
+  .row-flash,
+  .label-tap,
+  .trail-glow {
+    opacity: 1;
+    transform: none;
+    stroke-dashoffset: 0;
+    transition: none;
+    animation: none;
+  }
+  /* The ring only exists as the pulse, so without motion it stays hidden */
+  .rep-ring,
+  .is-visible .rep-ring {
+    opacity: 0;
+  }
+  /* The trail is only a fade, so without motion it isn't drawn */
+  .trail-glow {
+    display: none;
   }
 }

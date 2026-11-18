@@ -25,7 +25,7 @@ export default function Navbar({ right }: { right?: ReactNode }) {
     <>
       <nav className="sticky top-0 z-30 flex items-center justify-between px-6 sm:px-10 h-14 border-b border-white/5 bg-surface/20 backdrop-blur-md">
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2 origin-left transition-transform duration-300 ease-out hover:scale-110 motion-reduce:transition-none">
             <img src="/logo.svg" alt="" className="h-9 w-9" />
             <span className="font-brand text-xl font-extrabold">out<span className="text-accent">FIT</span>less</span>
           </Link>
