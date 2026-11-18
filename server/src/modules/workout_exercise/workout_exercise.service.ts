@@ -27,7 +27,9 @@ export const create = async (data: WorkoutExerciseInput, userId: string) => {
   return WorkoutExercise.create({
     ...rest,
     ...(data.amrap ? {} : { minReps, maxReps }),
-    ...(data.noWeight ? {} : { currentWeight, weightIncrement: weightIncrement ?? 1 }),
+    ...(data.noWeight ? {} : { currentWeight }),
+    // Max-rep targets never change by themselves, so they have no increment
+    ...(data.noWeight || data.amrap ? {} : { weightIncrement: weightIncrement ?? 1 }),
     order: (last?.order ?? -1) + 1,
     owner: userId,
   });
@@ -95,9 +97,11 @@ export const updateById = async (
       throw new AppError("currentReps must be between minReps and maxReps", 400);
     }
   }
-  if (!noWeight && (currentWeight == null || weightIncrement == null)) {
-    throw new AppError("currentWeight and weightIncrement are required unless noWeight is on", 400);
+  if (!noWeight && currentWeight == null) {
+    throw new AppError("currentWeight is required unless noWeight is on", 400);
   }
+  // Switching off max reps on a weighted exercise brings the increment back, starting at 1 kg
+  const needsIncrement = !noWeight && !amrap;
 
   // Fields that no longer apply are removed from the stored entry
   const set = { ...data };
@@ -110,9 +114,13 @@ export const updateById = async (
   }
   if (noWeight) {
     delete set.currentWeight;
-    delete set.weightIncrement;
     unset.currentWeight = 1;
+  }
+  if (!needsIncrement) {
+    delete set.weightIncrement;
     unset.weightIncrement = 1;
+  } else if (weightIncrement == null) {
+    set.weightIncrement = 1;
   }
 
   return WorkoutExercise.findOneAndUpdate(

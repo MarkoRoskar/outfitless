@@ -62,9 +62,10 @@ const workoutExerciseSchema = new mongoose.Schema(
       min: 0,
     },
 
+    // Not stored for max-rep sets either, since their targets never change by themselves
     weightIncrement: {
       type: Number,
-      required: function (this: { noWeight?: boolean }) { return !this.noWeight; },
+      required: function (this: { noWeight?: boolean; amrap?: boolean }) { return !this.noWeight && !this.amrap; },
       min: 0,
     },
 

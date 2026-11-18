@@ -10,7 +10,8 @@ import { AppError } from "../../common/errors/app.error";
 import { MAX_SESSIONS_PER_USER } from "../../common/limits";
 import { User } from "../auth/auth.model";
 
-// The exercise's current numbers after a finished session, or null if they shouldn't change.
+// The exercise's current numbers after a finished session, or null if they shouldn't change
+// (always for max-rep sets).
 // Current reps always stays inside the range.
 //
 // With weight, the new target comes from the heaviest set that reached minReps, so a heavier
@@ -19,19 +20,15 @@ import { User } from "../auth/auth.model";
 // - when no set reached minReps and the first set was under it, the increment comes off
 //   the first set's weight
 export const nextCurrentNumbers = (exercise: ProgressionInput) => {
+  // Max-rep sets have no range to progress through, so their targets only change when edited
+  if (exercise.amrap) return null;
+
   const logged = exercise.loggedSets.filter((set) => set.done);
   if (logged.length === 0) return null;
 
   const first = exercise.loggedSets[0];
   const increment = exercise.weightIncrement ?? 0;
   const bestReps = Math.max(...logged.map((set) => set.reps));
-
-  // Max-rep sets have no range, so they never change the weight by themselves
-  if (exercise.amrap) {
-    return exercise.noWeight
-      ? { currentReps: bestReps }
-      : { currentReps: bestReps, currentWeight: logged[0].weight ?? 0 };
-  }
 
   const minReps = exercise.minReps ?? 0;
   const maxReps = exercise.maxReps ?? Infinity;
@@ -138,7 +135,7 @@ export const start = async (workoutId: string, userId: string) => {
         noWeight: entry.noWeight,
         // Fields that don't apply to this entry aren't copied
         ...(entry.amrap ? {} : { minReps: entry.minReps, maxReps: entry.maxReps }),
-        ...(entry.noWeight ? {} : { weightIncrement: entry.weightIncrement }),
+        ...(entry.noWeight || entry.amrap ? {} : { weightIncrement: entry.weightIncrement }),
         lastSets: findLastSets(pastSessions, entry._id.toString(), entry.exerciseId.toString()),
         targetReps: entry.currentReps,
         ...(entry.noWeight ? {} : { targetWeight: entry.currentWeight }),

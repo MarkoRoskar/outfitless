@@ -12,7 +12,7 @@ import { fieldClass, inlineLink, labelClass, primaryButton, secondaryButton, pag
 import ActionMenu from '../components/ActionMenu'
 import Hint from '../components/Hint'
 import BackLink from '../components/BackLink'
-import { ArrowRightIcon, ChevronDownIcon, NoteIcon, PlayIcon, TimerIcon, TrendDownIcon, TrendUpIcon } from '../components/icons'
+import { ArrowRightIcon, ChevronDownIcon, NoteIcon, PlayIcon, RepeatIcon, TimerIcon, TrendDownIcon, TrendUpIcon } from '../components/icons'
 import { useAuthStore } from '../store/authStore'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import DragHandle from '../components/DragHandle'
@@ -231,7 +231,8 @@ function WorkoutExerciseDialog({ workoutId, entry, exercises, onClose, onSaved }
         currentReps: Number(currentReps),
         // Hidden fields don't apply, so they aren't sent
         ...(amrap ? {} : { minReps: Number(minReps), maxReps: Number(maxReps) }),
-        ...(noWeight ? {} : { currentWeight: Number(currentWeight), weightIncrement: Number(weightIncrement) }),
+        ...(noWeight ? {} : { currentWeight: Number(currentWeight) }),
+        ...(noWeight || amrap ? {} : { weightIncrement: Number(weightIncrement) }),
         restTime: Number(restTime),
       }
       // The exercise can only be chosen when adding, because the API doesn't allow changing it
@@ -307,7 +308,10 @@ function WorkoutExerciseDialog({ workoutId, entry, exercises, onClose, onSaved }
         {!noWeight && (
           <div className="grid grid-cols-2 gap-3 items-end">
             <NumberField label="Target weight" unit="kg" value={currentWeight} onChange={setCurrentWeight} min={0} max={MAX_WEIGHT} step="any" />
-            <NumberField label="Increment/decrement" unit="kg" value={weightIncrement} onChange={setWeightIncrement} min={0} max={MAX_WEIGHT_INCREMENT} step="any" />
+            {/* Max-rep targets never change by themselves, so there's nothing to step by */}
+            {!amrap && (
+              <NumberField label="Increment/decrement" unit="kg" value={weightIncrement} onChange={setWeightIncrement} min={0} max={MAX_WEIGHT_INCREMENT} step="any" />
+            )}
           </div>
         )}
 
@@ -367,12 +371,12 @@ function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, 
   // - With weight and a range: the heaviest set with at least min reps becomes the target; over
   //   max reps at that weight adds the increment, and no set reaching min reps takes it off
   // - Without weight: the target reps follow the best set, kept inside the range
-  // - Max-rep sets: the target becomes the best set, and the weight never changes by itself
+  // - Max-rep sets: the targets never change by themselves, only when edited
   // One set has nothing to rest between.
   const weightRules = !entry.noWeight && !entry.amrap
   const details = [
     entry.noWeight && !entry.amrap && { key: 'reps', icon: TrendUpIcon, text: <>Your best set becomes your target, up to {entry.maxReps} reps</> },
-    entry.amrap && { key: 'max', icon: TrendUpIcon, text: <>Your best set becomes your target</> },
+    entry.amrap && { key: 'max', icon: RepeatIcon, text: <>Your target stays the same until you edit it</> },
     weightRules && { key: 'best', icon: TrendUpIcon, text: <>Your heaviest set of {entry.minReps}+ reps becomes your target</> },
     weightRules && { key: 'up', icon: TrendUpIcon, text: <><Num>+{entry.weightIncrement} kg</Num> when it goes over {entry.maxReps} reps</> },
     weightRules && { key: 'down', icon: TrendDownIcon, text: <><Num>−{entry.weightIncrement} kg</Num> when no set reaches {entry.minReps} reps</> },

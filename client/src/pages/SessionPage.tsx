@@ -70,6 +70,9 @@ function describeChange(exercise: SessionExercise, logged: number, change: Weigh
   // Nothing was logged, so nothing was evaluated
   if (logged === 0) return { text: 'Not logged', highlight: false }
 
+  // Max-rep targets never change by themselves
+  if (exercise.amrap) return { text: 'Target stays', highlight: false }
+
   // Without weight, progress shows as more target reps
   if (exercise.noWeight) {
     const { repsBefore, repsAfter } = change ?? {}
