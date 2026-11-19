@@ -239,6 +239,15 @@ function ExerciseHeader({ exercise }: { exercise: SessionExercise }) {
             <span className="font-semibold text-zinc-50">{exercise.amrap ? 'max' : `${exercise.minReps}–${exercise.maxReps}`}</span> reps
           </span>
         </p>
+        {/* The target this workout started with, written like on the workout's page */}
+        {exercise.targetReps !== undefined && (exercise.noWeight || exercise.targetWeight !== undefined) && (
+          <p className="mt-0.5 flex items-baseline gap-2 leading-5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Target</span>
+            <span className="text-sm font-semibold tabular-nums text-accent-dim">
+              {describeSet({ reps: exercise.targetReps, weight: exercise.noWeight ? undefined : exercise.targetWeight })}
+            </span>
+          </p>
+        )}
         {exercise.note && (
           <p ref={noteRef} className={`mt-1 text-sm text-zinc-400 whitespace-pre-line wrap-break-word ${open ? '' : 'line-clamp-2'}`}>
             {exercise.note}
