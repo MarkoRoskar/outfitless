@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The public pages, for search engines. The address changes here too if the site moves. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://outfitless.onrender.com/</loc></url>
+  <url><loc>https://outfitless.onrender.com/signup</loc></url>
+  <url><loc>https://outfitless.onrender.com/login</loc></url>
+  <url><loc>https://outfitless.onrender.com/privacy</loc></url>
+</urlset>

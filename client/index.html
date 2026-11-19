@@ -4,13 +4,66 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>outFITless</title>
+    <title>outFITless: the workout tracker that raises your weights</title>
+    <!-- For search engines and link previews. The site's address is in each URL below; change them
+         all if it moves to its own domain (also public/robots.txt and public/sitemap.xml). -->
+    <meta name="description" content="outFITless is a free workout tracker by Marko Roškar. Log every set, and it plans your next workout: more weight when you hit the top of your rep range, less when you fall short." />
+    <meta name="author" content="Marko Roškar" />
+    <link rel="canonical" href="https://outfitless.onrender.com/" />
+    <meta name="theme-color" content="#09090b" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="outFITless" />
+    <meta property="og:title" content="outFITless: the workout tracker that raises your weights" />
+    <meta property="og:description" content="Log every set, and outFITless plans your next workout for you. Free, by Marko Roškar." />
+    <meta property="og:url" content="https://outfitless.onrender.com/" />
+    <meta property="og:image" content="https://outfitless.onrender.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The outFITless logo with the words: Hit your reps, and the weight goes up." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Tells search engines the site's name and who made it, so a search for either can find it -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "outFITless",
+            "alternateName": "outfitless",
+            "url": "https://outfitless.onrender.com/"
+          },
+          {
+            "@type": "WebApplication",
+            "name": "outFITless",
+            "url": "https://outfitless.onrender.com/",
+            "applicationCategory": "HealthApplication",
+            "operatingSystem": "Any",
+            "description": "A free workout tracker that logs every set and plans your next workout, raising the weight when you reach the top of your rep range.",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+            "author": { "@id": "#marko-roskar" }
+          },
+          {
+            "@type": "Person",
+            "@id": "#marko-roskar",
+            "name": "Marko Roškar",
+            "alternateName": "Marko Roskar",
+            "sameAs": ["https://github.com/MarkoRoskar"]
+          }
+        ]
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Big+Shoulders+Display:wght@800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
+    <!-- What the page says without JavaScript, for search engines that don't run it -->
+    <noscript>
+      <h1>outFITless: hit your reps, and the weight goes up</h1>
+      <p>outFITless is a free workout tracker by Marko Roškar. It tracks every set and plans your next workout for you: more weight when you reach the top of your rep range, less when you fall short. Follow a routine, see your progress on charts, and get a rest timer between sets.</p>
+      <p>Please turn on JavaScript to use outFITless.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

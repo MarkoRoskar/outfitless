@@ -1,0 +1,13 @@
+# Search engines may read the public pages. The rest need an account, so there's nothing to see.
+User-agent: *
+Allow: /
+Disallow: /workouts
+Disallow: /sessions
+Disallow: /history
+Disallow: /routines
+Disallow: /exercises
+Disallow: /settings
+Disallow: /verify-email
+Disallow: /reset-password
+
+Sitemap: https://outfitless.onrender.com/sitemap.xml

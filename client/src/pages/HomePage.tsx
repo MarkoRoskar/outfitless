@@ -281,6 +281,19 @@ export default function HomePage() {
         </section>
 
       </main>
+
+      {/* Who made it, in plain text, so a search for the name finds the site too. All on the left,
+          since the scroll lifter finishes his last rep at the bottom right. */}
+      <footer className="relative max-w-6xl mx-auto w-full px-6 sm:px-10 py-8 border-t border-white/8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-zinc-400">
+        <p>
+          <span className="font-brand font-extrabold text-zinc-200">out<span className="text-accent">FIT</span>less</span>
+          {' '}· Made by{' '}
+          <a href="https://github.com/MarkoRoskar" target="_blank" rel="noopener" className="text-zinc-200 hover:text-accent transition-colors duration-200">
+            Marko Roškar
+          </a>
+        </p>
+        <Link to="/privacy" className="hover:text-zinc-50 transition-colors duration-200">Privacy</Link>
+      </footer>
     </div>
   )
 }
