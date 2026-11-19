@@ -242,18 +242,19 @@ function ExerciseCard({ exercise, index, onEdit, onDelete }: { exercise: Exercis
   // Where the pointer went down, to tell a tap from a drag
   const pressedAt = useRef<{ x: number; y: number } | null>(null)
 
-  // How far down the muscle group photos reach: the whole card, or with a note only down to the
-  // line above it, so the note is on plain card. Measured as the card opens and closes, so the
-  // photos grow and shrink with it.
+  // How far down the muscle group photos reach: the whole closed card, and on an open card only
+  // down to the line above its sections (muscle groups and note), so those are on plain card and
+  // never make the photos jump while the card opens or closes. A closed card has no sections on
+  // the page. Measured as the card opens and closes, like on the other cards.
   const cardRef = useRef<HTMLLIElement | null>(null)
-  const noteRef = useRef<HTMLDivElement>(null)
+  const sectionsRef = useRef<HTMLDivElement>(null)
   const [photosHeight, setPhotosHeight] = useState<number>()
   useEffect(() => {
     const card = cardRef.current
     if (!card) return
     function measure() {
       const cardBox = card!.getBoundingClientRect()
-      const line = noteRef.current?.firstElementChild?.getBoundingClientRect()
+      const line = sectionsRef.current?.firstElementChild?.getBoundingClientRect()
       setPhotosHeight(Math.min(cardBox.height, line ? line.top - cardBox.top : Infinity))
     }
     measure()
@@ -336,16 +337,14 @@ function ExerciseCard({ exercise, index, onEdit, onDelete }: { exercise: Exercis
       {/* Below the buttons, so these get the card's full width. Like the rest of the card,
           tapping them closes it, so a long note can be closed from the bottom. */}
       <Expand open={open}>
-        <div className="relative">
+        <div ref={sectionsRef} className="relative">
           <CardSection label={exercise.muscleGroups.length === 1 ? 'Muscle group' : 'Muscle groups'}>
             {groups}
           </CardSection>
           {exercise.note && (
-            <div ref={noteRef}>
-              <CardSection label="Note">
-                <span className="whitespace-pre-line">{exercise.note}</span>
-              </CardSection>
-            </div>
+            <CardSection label="Note">
+              <span className="whitespace-pre-line">{exercise.note}</span>
+            </CardSection>
           )}
         </div>
       </Expand>

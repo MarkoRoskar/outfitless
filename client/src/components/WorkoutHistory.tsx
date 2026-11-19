@@ -71,9 +71,11 @@ function SessionCard({ session, index, onEdit, onDelete }: { session: FinishedSe
     function measure() {
       const cardBox = card!.getBoundingClientRect()
       const line = sectionRef.current?.firstElementChild?.getBoundingClientRect()
-      // A closed card's sections aren't drawn, so they have no size
-      const open = detailsRef.current?.open && line && line.height > 0
-      setPhotosHeight(Math.min(cardBox.height, open ? line.top - cardBox.top : Infinity))
+      // A closed card's sections aren't drawn, so they have no size. While the card is closing they
+      // still show, so the photos keep ending above them: reaching down over the sliding sets for a
+      // moment, they'd make room for that text and jump narrower and back.
+      const shown = line && line.height > 0
+      setPhotosHeight(Math.min(cardBox.height, shown ? line.top - cardBox.top : Infinity))
     }
     measure()
     const observer = new ResizeObserver(measure)

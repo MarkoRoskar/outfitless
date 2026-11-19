@@ -451,7 +451,6 @@ details[open]::details-content {
   /* The widest the strip gets, so it stays clear of the name and groups on the left: a third of
   a phone's card, a little more on a wider one */
   --photos-max: 34%;
-  mask-image: linear-gradient(to right, transparent 0, black 40px);
   filter: grayscale(1) brightness(0.55);
   transition: filter 300ms ease-out;
 }
@@ -465,11 +464,9 @@ details[open]::details-content {
 .group\/card:hover .muscle-photos {
   filter: grayscale(0.1) brightness(0.75);
 }
-/* Behind some of the card's text, they stay black and white, a little darker, even on hover */
-.muscle-photos.is-muted,
-.group:hover .muscle-photos.is-muted,
-.group\/card:hover .muscle-photos.is-muted {
-  filter: grayscale(1) brightness(0.4);
+.muscle-photos-shown {
+  /* Fully faded out at their left edge, which is just after the card's text, then fading in */
+  mask-image: linear-gradient(to right, transparent 0, black 32px);
 }
 .muscle-photo-slice {
   transform: skewX(-12deg);

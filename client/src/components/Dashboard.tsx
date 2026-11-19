@@ -15,6 +15,7 @@ import PageHelp from './PageHelp'
 import { helpText } from '../lib/helpText'
 import Loading from './Loading'
 import Reveal from './Reveal'
+import StarterKitCard from './StarterKitCard'
 
 interface Named {
   _id: string
@@ -100,6 +101,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState<SessionStats | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [attempt, setAttempt] = useState(0)
+  // Whether a new account turned down the starter kit, to make its own exercises instead
+  const [skippedKit, setSkippedKit] = useState(false)
 
   useEffect(() => {
     let ignore = false
@@ -134,6 +137,9 @@ export default function Dashboard() {
 
     return () => { ignore = true }
   }, [attempt, logout])
+
+  // Only for an account with nothing in it yet, which is all the server adds the kit to
+  const offerKit = exercises.length === 0 && workouts.length === 0 && routines.length === 0 && !skippedKit
 
   // Each step needs the one before it, so only the first missing step is shown
   const nextStep =
@@ -264,6 +270,15 @@ export default function Dashboard() {
               </Reveal>
             )}
 
+            {/* A brand-new account is offered the starter kit first, where Next up will be once it
+                follows a routine. Turning it down shows the usual first step below instead. */}
+            {offerKit && (
+              <StarterKitCard
+                onAdded={() => { setStatus('loading'); setAttempt((a) => a + 1) }}
+                onSkip={() => setSkippedKit(true)}
+              />
+            )}
+
             {stats && (
               <div className="grid grid-cols-3 gap-2">
                 {/* The tiles pop in one after another, left to right */}
@@ -282,7 +297,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {nextStep && (
+            {!offerKit && nextStep && (
               <Hint>
                 {nextStep.text}{' '}
                 <Link to={nextStep.to} className={inlineLink}>{nextStep.action}</Link>.

@@ -9,6 +9,7 @@ import workoutRoutes from "./modules/workout/workout.route";
 import workoutExerciseRoutes from "./modules/workout_exercise/workout_exercise.route";
 import routineRoutes from "./modules/routine/routine.route";
 import sessionRoutes from "./modules/session/session.route";
+import starterRoutes from "./modules/starter/starter.route";
 import { errorMiddleware } from "./middleware/error.middleware";
 import { env } from "./config/env";
 
@@ -47,6 +48,7 @@ app.use("/api/workouts", workoutRoutes);
 app.use("/api/workout-exercises", workoutExerciseRoutes);
 app.use("/api/routines", routineRoutes);
 app.use("/api/sessions", sessionRoutes);
+app.use("/api/starter-kit", starterRoutes);
 
 // Any other /api address is unknown, so it answers in JSON like the rest of the API
 app.use("/api", (_req, res) => {
