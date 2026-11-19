@@ -8,6 +8,7 @@ import { useAuthStore } from '../store/authStore'
 import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
 import { ArrowLeftIcon } from '../components/icons'
+import Reveal from '../components/Reveal'
 
 export default function RegisterPage() {
   const { token, logout } = useAuthStore()
@@ -25,14 +26,14 @@ export default function RegisterPage() {
         <Navbar right={<Link to="/" className={`inline-flex items-center gap-1.5 ${navLink}`}><ArrowLeftIcon size={14} />Back</Link>} />
         <PageBackdrop />
         <main className="relative flex flex-1 items-center justify-center px-6">
-          <div className="text-center flex flex-col gap-3">
+          <Reveal onLoad className="text-center flex flex-col gap-3">
             <h1 className={pageTitle}>You're already logged in</h1>
             <p className="text-sm text-zinc-400">Head back to the app or log out.</p>
             <div className="flex items-center justify-center gap-4 mt-1">
               <Link to="/" className="text-sm font-medium text-zinc-50 hover:text-accent transition-colors duration-200">Go home</Link>
               <button onClick={() => { logout(); navigate('/login') }} className={navLink}>Log out</button>
             </div>
-          </div>
+          </Reveal>
         </main>
       </div>
     )
@@ -81,28 +82,30 @@ export default function RegisterPage() {
 
           {done ? (
             <>
-              <div className="flex flex-col gap-1.5">
+              <Reveal onLoad className="flex flex-col gap-1.5">
                 <h1 className={pageTitle}>Check your email</h1>
                 <p className="text-sm text-zinc-400">
                   We sent a verification link to <span className="font-medium text-zinc-50">{email}</span>. Click it to activate your account.
                 </p>
-              </div>
-              <p className="text-center text-sm text-zinc-400">
-                Already verified?{' '}
-                <Link to="/login" className="font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
-                  Log in
-                </Link>
-              </p>
+              </Reveal>
+              <Reveal onLoad delay={100}>
+                <p className="text-center text-sm text-zinc-400">
+                  Already verified?{' '}
+                  <Link to="/login" className="font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
+                    Log in
+                  </Link>
+                </p>
+              </Reveal>
             </>
           ) : (
             <>
-              <div className="flex flex-col gap-1.5">
+              <Reveal onLoad className="flex flex-col gap-1.5">
                 <h1 className={pageTitle}>Create an account</h1>
                 <p className="text-sm text-zinc-400">Start tracking your progress today.</p>
-              </div>
+              </Reveal>
 
-              <div>
-                <div className="bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
+              <Reveal onLoad variant="pop" delay={100}>
+                <div className="card-fade bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
                   <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
                       <label className={labelClass}>Email</label>
@@ -152,14 +155,16 @@ export default function RegisterPage() {
                     </button>
                   </form>
                 </div>
-              </div>
+              </Reveal>
 
-              <p className="text-center text-sm text-zinc-400">
-                Already have an account?{' '}
-                <Link to="/login" className="font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
-                  Log in
-                </Link>
-              </p>
+              <Reveal onLoad delay={200}>
+                <p className="text-center text-sm text-zinc-400">
+                  Already have an account?{' '}
+                  <Link to="/login" className="font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
+                    Log in
+                  </Link>
+                </p>
+              </Reveal>
             </>
           )}
 

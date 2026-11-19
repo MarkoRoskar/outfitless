@@ -66,10 +66,13 @@ export default function DatePicker({ id, value, onChange, max, placeholder = 'An
     setOpen((current) => !current)
   }
 
-  function pick(key: string) {
+  // Focus goes back to the field only after a key press (a click's detail is 0 then), so the
+  // keyboard carries on from there. After a tap or mouse click nothing keeps focus, so the field
+  // doesn't keep its green focus border.
+  function pick(key: string, event: React.MouseEvent) {
     onChange(key)
     setOpen(false)
-    buttonRef.current?.focus()
+    if (event.detail === 0) buttonRef.current?.focus()
   }
 
   // The month's days, with blanks before the 1st so it lands under its weekday (Monday first)
@@ -103,7 +106,7 @@ export default function DatePicker({ id, value, onChange, max, placeholder = 'An
         <div
           role="dialog"
           aria-label="Choose a date"
-          className={`absolute ${align === 'end' ? 'right-0' : 'left-0'} top-full mt-1 z-40 w-72 max-w-[calc(100vw-2rem)] p-3 rounded-xl border border-white/5 bg-zinc-900/95 backdrop-blur-xl shadow-lg`}
+          className={`popover-in ${align === 'end' ? 'origin-top-right right-0' : 'origin-top-left left-0'} absolute top-full mt-1 z-40 w-72 max-w-[calc(100vw-2rem)] p-3 rounded-xl border border-white/8 bg-black/85 backdrop-blur-xl shadow-lg`}
         >
           <div className="flex items-center justify-between mb-2">
             <button
@@ -139,7 +142,7 @@ export default function DatePicker({ id, value, onChange, max, placeholder = 'An
                 <button
                   key={key}
                   type="button"
-                  onClick={() => pick(key)}
+                  onClick={(event) => pick(key, event)}
                   disabled={disabled}
                   aria-pressed={selected}
                   aria-label={formatDay(date)}
@@ -158,7 +161,7 @@ export default function DatePicker({ id, value, onChange, max, placeholder = 'An
           <div className="mt-2 flex justify-between">
             <button
               type="button"
-              onClick={() => pick('')}
+              onClick={(event) => pick('', event)}
               className="h-8 px-2 rounded-lg text-xs font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-50 transition-colors duration-200"
             >
               Clear
@@ -166,7 +169,7 @@ export default function DatePicker({ id, value, onChange, max, placeholder = 'An
             {(!max || todayKey <= max) && (
               <button
                 type="button"
-                onClick={() => pick(todayKey)}
+                onClick={(event) => pick(todayKey, event)}
                 className="h-8 px-2 rounded-lg text-xs font-medium text-accent-dim hover:bg-white/5 transition-colors duration-200"
               >
                 Today

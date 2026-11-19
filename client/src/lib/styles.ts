@@ -1,10 +1,10 @@
 // Tailwind classes shared across pages and components
-export const fieldClass = 'rounded-xl border border-white/6 bg-white/5 px-3 text-sm text-zinc-50 placeholder:text-zinc-600 hover:border-white/25 focus:outline-none focus:border-accent transition-all duration-200'
+export const fieldClass = 'card-fade rounded-xl border border-white/6 bg-white/5 px-3 text-sm text-zinc-50 placeholder:text-zinc-600 hover:border-white/25 focus:outline-none focus:border-accent transition-all duration-200'
 export const inputClass = `h-10 ${fieldClass}`
-// Search boxes and dropdowns that sit on the page itself, above a list: the same gray as the
-// cards and the same faint edge, so the toolbar and the list below it look like one material.
-// Fields inside cards and dialogs keep fieldClass, so they still stand out from their gray.
-export const toolbarField = 'rounded-xl border border-white/4 bg-zinc-900/55 hover:bg-zinc-800/40 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:outline-none focus:border-accent transition-all duration-200'
+// Search boxes, dropdowns and date fields that sit on the page itself, above a list: darker than
+// the cards, near black with a faint edge, so they look set into the page and read as controls
+// rather than more cards. Fields inside cards and dialogs keep fieldClass.
+export const toolbarField = 'rounded-xl border border-white/8 bg-black/45 hover:bg-black/60 hover:border-white/15 px-3 text-sm text-zinc-50 placeholder:text-zinc-400 focus:outline-none focus:border-accent transition-all duration-200'
 // A field's label: a step bigger and brighter than the small gray hints, so it reads as the title
 export const labelClass = 'text-sm font-medium text-zinc-200'
 // Create and save actions: green outline with a faint green fill, so they read as green
@@ -15,9 +15,12 @@ export const authSubmitButton =`w-4/5 mx-auto mt-2 ${accentButton}`
 export const secondaryButton ='h-10 px-4 rounded-xl text-sm font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-50 transition-colors duration-200'
 // The final, solid red button of a dialog that deletes something
 export const dangerButton = 'h-10 px-5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-colors duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed'
-export const dangerSecondaryButton = 'h-10 px-4 rounded-xl text-sm font-medium text-zinc-400 hover:bg-red-500/10 hover:text-red-400 transition-colors duration-200'
+// Outlined buttons, like Finish workout and Discard on a workout: they read clearly as
+// buttons without the weight of a solid one. The green one is the way forward, the red one destructive.
+export const accentSecondaryButton = 'h-10 px-4 rounded-xl border border-accent/40 text-sm font-semibold text-accent hover:bg-accent/10 hover:border-accent/60 transition-colors duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed'
+export const dangerSecondaryButton = 'h-10 px-4 rounded-xl border border-red-500/30 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:border-red-500/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
 export const navLink ='text-sm font-medium text-zinc-400 hover:text-zinc-50 transition-colors duration-200'
-export const card = 'p-4 rounded-2xl bg-zinc-900/55 ring-1 ring-inset ring-white/4'
+export const card = 'card-fade p-4 rounded-2xl bg-zinc-900/55 ring-1 ring-inset ring-white/4'
 // A link or button inside a sentence of gray helper text, like "Create one in Workouts"
 export const inlineLink = 'font-medium text-zinc-50 hover:text-accent transition-colors duration-200'
 export const listLink = 'min-w-0 text-sm text-zinc-400 wrap-break-word hover:text-accent transition-colors duration-200'

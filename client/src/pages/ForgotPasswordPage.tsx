@@ -5,6 +5,7 @@ import api from '../lib/axios'
 import { authSubmitButton, inputClass, labelClass, pageTitle } from '../lib/styles'
 import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
+import Reveal from '../components/Reveal'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -41,28 +42,30 @@ export default function ForgotPasswordPage() {
 
           {done ? (
             <>
-              <div className="flex flex-col gap-1.5">
+              <Reveal onLoad className="flex flex-col gap-1.5">
                 <h1 className={pageTitle}>Check your email</h1>
                 <p className="text-sm text-zinc-400">
                   If an account exists for <span className="font-medium text-zinc-50">{email}</span>, we sent a reset link. Check your inbox.
                 </p>
-              </div>
-              <p className="text-center text-sm text-zinc-400">
-                Back to{' '}
-                <Link to="/login" className="font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
-                  Log in
-                </Link>
-              </p>
+              </Reveal>
+              <Reveal onLoad delay={100}>
+                <p className="text-center text-sm text-zinc-400">
+                  Back to{' '}
+                  <Link to="/login" className="font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
+                    Log in
+                  </Link>
+                </p>
+              </Reveal>
             </>
           ) : (
             <>
-              <div className="flex flex-col gap-1.5">
+              <Reveal onLoad className="flex flex-col gap-1.5">
                 <h1 className={pageTitle}>Forgot password?</h1>
                 <p className="text-sm text-zinc-400">Enter your email and we'll send you a reset link.</p>
-              </div>
+              </Reveal>
 
-              <div>
-                <div className="bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
+              <Reveal onLoad variant="pop" delay={100}>
+                <div className="card-fade bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
                   <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
                       <label className={labelClass}>Email</label>
@@ -90,14 +93,16 @@ export default function ForgotPasswordPage() {
                     </button>
                   </form>
                 </div>
-              </div>
+              </Reveal>
 
-              <p className="text-center text-sm text-zinc-400">
-                Remember your password?{' '}
-                <Link to="/login" className="font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
-                  Log in
-                </Link>
-              </p>
+              <Reveal onLoad delay={200}>
+                <p className="text-center text-sm text-zinc-400">
+                  Remember your password?{' '}
+                  <Link to="/login" className="font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
+                    Log in
+                  </Link>
+                </p>
+              </Reveal>
             </>
           )}
 

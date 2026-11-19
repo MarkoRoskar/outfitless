@@ -8,11 +8,11 @@ import Reveal from './Reveal'
 // and weight can be typed, ticking a set starts the rest timer and Skip ends it. Nothing is saved.
 // Last time the sets reached the top of the 8–12 range, so the weight went up from 80 to 82.5 kg.
 // Logging the last set shows what happens next time at the top right, worked out from the sets as typed: by
-// default 13 reps goes over the range, so it's +2.5 kg.
+// default 13 reps is past the top of the range, so it's +2.5 kg.
 
 const REST_SECONDS = 90
 // The timer is already running when the card is first seen, a little way into a rest
-const FIRST_REST_SECONDS = 8
+const FIRST_REST_SECONDS = 20
 
 // The first two sets are already done; the third is the one left to log. A done set can't be
 // unticked, so the third can be ticked once.
@@ -31,16 +31,18 @@ const INCREMENT = 2.5
 
 // The change to the target weight after these sets, by the app's own rule (nextCurrentNumbers in
 // the server's session.service.ts): the heaviest set with at least MIN_REPS becomes the target,
-// plus the increment if it went over MAX_REPS. No set reaching MIN_REPS takes the increment off.
+// plus the increment if it reached MAX_REPS. A first set under MIN_REPS takes the increment off
+// its weight instead, whatever the later sets did.
 function weightChange(sets: { reps: string; weight: string }[]) {
   const logged = sets.map((set) => ({ reps: Number(set.reps), weight: Number(set.weight) }))
-  const reached = logged.filter((set) => set.reps >= MIN_REPS)
-  if (reached.length === 0) {
-    return logged[0].reps < MIN_REPS ? -INCREMENT : logged[0].weight - TARGET_WEIGHT
+  if (logged[0].reps < MIN_REPS) {
+    return Math.round((Math.max(logged[0].weight - INCREMENT, 0) - TARGET_WEIGHT) * 100) / 100
   }
+  const reached = logged.filter((set) => set.reps >= MIN_REPS)
+  if (reached.length === 0) return logged[0].weight - TARGET_WEIGHT
   const heaviest = Math.max(...reached.map((set) => set.weight))
   const repsAtHeaviest = Math.max(...reached.filter((set) => set.weight === heaviest).map((set) => set.reps))
-  const next = repsAtHeaviest > MAX_REPS ? heaviest + INCREMENT : heaviest
+  const next = repsAtHeaviest >= MAX_REPS ? heaviest + INCREMENT : heaviest
   return Math.round((next - TARGET_WEIGHT) * 100) / 100
 }
 
@@ -51,7 +53,7 @@ function describeChange(change: number) {
 
 export default function SessionPreview() {
   const [sets, setSets] = useState(startingSets)
-  // Seconds left in the rest. It shows 1:23 until the card is seen, and stops at 0:00.
+  // Seconds left in the rest. It shows 0:20 until the card is seen, and stops at 0:00.
   const [rest, setRest] = useState(FIRST_REST_SECONDS)
   const [started, setStarted] = useState(false)
   // The beep at 0:00, muted until the visitor turns it on, so the homepage never makes a sound

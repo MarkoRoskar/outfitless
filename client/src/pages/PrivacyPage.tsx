@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { card, inlineLink, mainPageTitle, pageSectionHeading } from '../lib/styles'
 import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
+import Reveal from '../components/Reveal'
 
 const CONTACT = 'outfiless.app@gmail.com'
 
@@ -14,8 +15,11 @@ export default function PrivacyPage() {
       <PageBackdrop />
 
       <main className="relative flex flex-col flex-1 max-w-3xl mx-auto w-full px-6 sm:px-10 pt-8 pb-16 sm:pt-16 gap-6">
-        <h1 className={mainPageTitle}>Privacy</h1>
-        <p className="text-sm text-zinc-400">Last updated 17 November 2026</p>
+        {/* The title comes in as the page opens; each section as it scrolls into view */}
+        <Reveal onLoad className="flex flex-col gap-6">
+          <h1 className={mainPageTitle}>Privacy</h1>
+          <p className="text-sm text-zinc-400">Last updated 17 November 2026</p>
+        </Reveal>
 
         <Section title="What we store">
           <p>Your email address and your password, which is stored scrambled (hashed) so nobody can read it.</p>
@@ -59,9 +63,11 @@ export default function PrivacyPage() {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className={`${card} flex flex-col gap-2 text-sm text-zinc-300 leading-relaxed`}>
-      <h2 className={pageSectionHeading}>{title}</h2>
-      {children}
-    </section>
+    <Reveal>
+      <section className={`${card} flex flex-col gap-2 text-sm text-zinc-300 leading-relaxed`}>
+        <h2 className={pageSectionHeading}>{title}</h2>
+        {children}
+      </section>
+    </Reveal>
   )
 }

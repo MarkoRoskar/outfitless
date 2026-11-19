@@ -55,7 +55,8 @@ export default function ConfirmDeleteDialog({ title, message, path, onClose, onD
   }
 
   return (
-    <Modal title={title} busy={deleting} onClose={onClose}>
+    // Nothing to type, so a click outside it can safely close it, like the help pop-ups
+    <Modal title={title} busy={deleting} onClose={onClose} closeOnOutsideClick>
       <div className="flex flex-col gap-4">
         <p className="text-sm text-zinc-400 wrap-break-word">{message}</p>
 

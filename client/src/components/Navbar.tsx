@@ -13,9 +13,10 @@ const pages = [
   { to: '/history', label: 'History', icon: HistoryIcon, end: false },
 ]
 
-// The current page's link is white, the others gray
+// The current page's link is white, the others gray. The padding makes room for the dumbbell's
+// plates at either end, and the negative margin keeps the links where they were.
 const topLink = ({ isActive }: { isActive: boolean }) =>
-  isActive ? 'text-sm font-medium text-zinc-50' : navLink
+  `group relative -mx-3 px-3 py-1.5 ${isActive ? 'text-sm font-medium text-zinc-50' : navLink}`
 
 export default function Navbar({ right }: { right?: ReactNode }) {
   const { token, logout } = useAuthStore()
@@ -31,9 +32,22 @@ export default function Navbar({ right }: { right?: ReactNode }) {
           </Link>
           {/* On phones these links move to the tab bar at the bottom. The logo already leads home. */}
           {token && (
-            <div className="hidden md:flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-8">
               {pages.slice(1).map((page) => (
-                <NavLink key={page.to} to={page.to} className={topLink}>{page.label}</NavLink>
+                <NavLink key={page.to} to={page.to} className={topLink}>
+                  {({ isActive }) => (
+                    <>
+                      {/* Drawn by .nav-dumbbell in index.css */}
+                      <span aria-hidden="true" className={`nav-dumbbell ${isActive ? 'is-active' : ''}`}>
+                        <span className="nav-dumbbell-bar" />
+                        <span className="nav-dumbbell-plate" data-side="left" />
+                        <span className="nav-dumbbell-plate" data-side="right" />
+                      </span>
+                      {/* A dark glow around the letters hides the handle right behind them, so the name stays crisp */}
+                      <span className="relative [text-shadow:0_0_4px_var(--color-surface),0_0_8px_var(--color-surface)]">{page.label}</span>
+                    </>
+                  )}
+                </NavLink>
               ))}
             </div>
           )}

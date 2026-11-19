@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import type { LineDrawShapeProps, MouseHandlerDataParam } from 'recharts'
 import api, { isUnauthorized } from '../lib/axios'
 import { buildChartData, formatStat, repsKey, weightKey } from '../lib/progressChart'
 import type { ChartExercise, ChartPoint, ChartSession } from '../lib/progressChart'
 import { formatShortDay } from '../lib/dates'
+import { ticksFor } from '../lib/chartTicks'
 import { card, secondaryButton } from '../lib/styles'
 import { useAuthStore } from '../store/authStore'
 import { ChevronDownIcon } from './icons'
@@ -36,7 +39,7 @@ function ChartTooltip({ active, payload, exercises, colorOf }: {
 
   return (
     // Long names are cut short so the box stays small next to the chart; the numbers always show in full
-    <div className="max-w-64 flex flex-col gap-1 p-3 rounded-xl border border-white/5 bg-zinc-900/80 backdrop-blur-xl text-xs shadow-lg">
+    <div className="card-fade max-w-64 flex flex-col gap-1 p-3 rounded-xl border border-white/5 bg-zinc-900/80 backdrop-blur-xl text-xs shadow-lg">
       <p className="font-semibold">{formatShortDay(point.date)}</p>
       {exercises.filter((exercise) => point.stats[exercise.id]).map((exercise) => (
         <p key={exercise.id} style={{ color: colorOf(exercise.id) }} className="flex min-w-0 tabular-nums">
@@ -95,8 +98,69 @@ function ExercisePicker({ exercises, shownIds, colorOf, onToggle }: {
   )
 }
 
+// How long a lit-up stretch of line takes to fade (trail-glow in index.css), as on the homepage chart
+const TRAIL_MS = 900
+// How long a line takes to draw itself and each dot to pop in (draw-line and pop-dot in index.css).
+// A little quicker than the homepage's, since this chart is opened to be read. Each dot pops in as
+// the line reaches it.
+const DRAW_MS = 450
+const POP_MS = 300
+
+type LinePoint = { x: number; y: number; index: number }
+
+// The stretch of a line around one session: halfway to the session drawn on each side. A
+// session this exercise wasn't logged in has no dot, so nothing lights up there.
+function stretch(drawn: LinePoint[], index: number) {
+  const at = drawn.findIndex((point) => point.index === index)
+  if (at === -1) return null
+  const middle = (a: LinePoint, b: LinePoint) => `${(a.x + b.x) / 2},${(a.y + b.y) / 2}`
+  return [
+    ...(at > 0 ? [middle(drawn[at - 1], drawn[at])] : []),
+    `${drawn[at].x},${drawn[at].y}`,
+    ...(at < drawn.length - 1 ? [middle(drawn[at], drawn[at + 1])] : []),
+  ].join(' ')
+}
+
+// One line, drawn by hand rather than by Recharts, so it can use the homepage's drawing animation
+// and carry the trail. Straight segments joining the logged sessions, like connectNulls. Recharts
+// passes the points and stroke. Only a fresh line draws itself: Recharts replaces every line's
+// elements whenever the lines change, so the others would draw again too.
+function TrailLine({ points, stroke, trail, fresh, onDrawn }: Partial<LineDrawShapeProps> & {
+  trail: { key: number; index: number }[]
+  fresh: boolean
+  onDrawn: () => void
+}) {
+  const drawn = (points ?? []).flatMap((point, index) =>
+    point.x == null || point.y == null ? [] : [{ x: point.x, y: point.y, index }])
+  if (drawn.length === 0) return null
+  return (
+    <g>
+      <path
+        d={`M${drawn.map((point) => `${point.x},${point.y}`).join('L')}`}
+        pathLength={1}
+        className={fresh ? 'draw-line' : undefined}
+        // Settled once the last dot has popped in too, which starts as the line finishes
+        onAnimationEnd={fresh ? () => setTimeout(onDrawn, POP_MS) : undefined}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+      {trail.map((item) => {
+        const part = stretch(drawn, item.index)
+        return part && (
+          <polyline key={item.key} points={part} className="trail-glow" fill="none" stroke={stroke} strokeLinecap="round" strokeLinejoin="round" />
+        )
+      })}
+    </g>
+  )
+}
+
 // One line chart. It only draws the exercises in lines, and its tooltip only lists those in shown.
-function ProgressLines({ title, unit, height, points, colorOf, shown, lines, lineKey }: {
+// It works like the homepage's chart: each line draws itself from left to right when it's first
+// shown (also when switched on), its dots pop in as it reaches them, and moving across the chart
+// leaves a short glowing trail.
+function ProgressLines({ title, unit, height, points, colorOf, shown, lines, lineKey, drawnKeys, onDrawn, emptyText, ticks }: {
   title: string
   unit: string
   height: number
@@ -105,14 +169,48 @@ function ProgressLines({ title, unit, height, points, colorOf, shown, lines, lin
   shown: ChartExercise[]
   lines: ChartExercise[]
   lineKey: (exerciseId: string) => `weight_${string}` | `reps_${string}`
+  // The lines that have finished drawing themselves, by line key, so they don't draw again
+  drawnKeys: Set<string>
+  onDrawn: (key: string) => void
+  // With nothing switched on: the empty grid still shows, scaled to the workout's numbers (ticks)
+  // so it keeps its size, with this message over it, like the homepage's chart
+  emptyText?: string
+  ticks?: number[]
 }) {
+  // The session under the pointer, and the sessions it recently passed, each lighting up its
+  // stretch of every line until its fade has played
+  const [active, setActive] = useState<number | null>(null)
+  const [trail, setTrail] = useState<{ key: number; index: number }[]>([])
+  const trailKey = useRef(0)
+
+  function track(state: MouseHandlerDataParam) {
+    const raw = state.activeTooltipIndex
+    const index = raw === undefined || raw === null ? null : Number(raw)
+    if (index === null || Number.isNaN(index) || index === active) return
+    setActive(index)
+    const key = ++trailKey.current
+    setTrail((current) => [...current, { key, index }])
+    setTimeout(() => setTrail((current) => current.filter((item) => item.key !== key)), TRAIL_MS)
+  }
+
   // Which exercise each line is shows in the colored names above the charts, so the title is just the measure
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-xs font-medium text-zinc-400">{title}</h3>
-      <div role="img" aria-label={`${title} per session for ${lines.map((line) => line.name).join(', ')}. The same numbers are in the table below.`}>
+      <div
+        className="relative"
+        style={{ '--draw-duration': `${DRAW_MS}ms`, '--pop-duration': `${POP_MS}ms` } as CSSProperties}
+        role={emptyText ? undefined : 'img'}
+        aria-label={emptyText ? undefined : `${title} per session for ${lines.map((line) => line.name).join(', ')}. The same numbers are in the table below.`}
+      >
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <LineChart
+            data={points}
+            margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+            onMouseMove={track}
+            onTouchMove={track}
+            onMouseLeave={() => setActive(null)}
+          >
             <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
             <XAxis
               dataKey="id"
@@ -127,27 +225,51 @@ function ProgressLines({ title, unit, height, points, colorOf, shown, lines, lin
             />
             <YAxis
               width={44}
-              domain={['auto', 'auto']}
+              domain={ticks ? [ticks[0], ticks[ticks.length - 1]] : ['auto', 'auto']}
+              ticks={ticks}
               unit={unit}
               allowDecimals={unit !== ''}
               tick={axisTick}
               tickLine={false}
               axisLine={false}
             />
-            <Tooltip content={<ChartTooltip exercises={shown} colorOf={colorOf} />} cursor={{ stroke: 'var(--chart-axis)' }} />
+            {!emptyText && (
+              <Tooltip content={<ChartTooltip exercises={shown} colorOf={colorOf} />} cursor={{ stroke: 'var(--chart-axis)' }} />
+            )}
+            {/* Recharts only labels the axes with a line on the chart, so the empty grid has an
+                invisible one */}
+            {emptyText && points.length > 0 && (
+              <Line dataKey={() => ticks?.[0] ?? 0} stroke="transparent" dot={false} activeDot={false} isAnimationActive={false} />
+            )}
             {lines.map((line) => {
               const color = colorOf(line.id)
+              const key = lineKey(line.id)
+              const fresh = !drawnKeys.has(key)
 
               return (
                 <Line
                   key={line.id}
-                  dataKey={lineKey(line.id)}
+                  dataKey={key}
                   name={line.name}
                   stroke={color}
                   strokeWidth={2}
                   // A missing session has no dot, and the line joins the dots on either side
                   connectNulls
-                  dot={{ r: 4, fill: color, stroke: 'var(--chart-surface)', strokeWidth: 2 }}
+                  shape={<TrailLine trail={trail} fresh={fresh} onDrawn={() => onDrawn(key)} />}
+                  // Each dot pops in as the drawing line reaches it
+                  dot={({ cx, cy, index, value }) => cx == null || cy == null || value == null ? <g key={`dot-${index}`} /> : (
+                    <circle
+                      key={`dot-${index}`}
+                      className={fresh ? 'pop-dot' : undefined}
+                      style={{ '--reveal-delay': `${points.length > 1 ? (index / (points.length - 1)) * DRAW_MS : 0}ms` } as CSSProperties}
+                      cx={cx}
+                      cy={cy}
+                      r={4}
+                      fill={color}
+                      stroke="var(--chart-surface)"
+                      strokeWidth={2}
+                    />
+                  )}
                   activeDot={{ r: 6, stroke: 'var(--chart-surface)', strokeWidth: 2 }}
                   isAnimationActive={false}
                 />
@@ -155,6 +277,9 @@ function ProgressLines({ title, unit, height, points, colorOf, shown, lines, lin
             })}
           </LineChart>
         </ResponsiveContainer>
+        {emptyText && (
+          <p className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400">{emptyText}</p>
+        )}
       </div>
     </div>
   )
@@ -233,6 +358,10 @@ export default function WorkoutProgressChart({ workoutId }: { workoutId: string 
   // first 8 are on, in the colors 1 to 8. A color stays with its exercise while it's on, and is
   // handed to the next exercise switched on once it's free.
   const [picked, setPicked] = useState<{ ids: string[]; colors: Record<string, number> } | null>(null)
+  // Lines that have drawn themselves (weight_<id> or reps_<id>). Switching an exercise off takes
+  // its lines out, so switching it back on draws them again, like on the homepage.
+  const [drawnKeys, setDrawnKeys] = useState<Set<string>>(() => new Set())
+  const markDrawn = (key: string) => setDrawnKeys((current) => new Set(current).add(key))
 
   useEffect(() => {
     let ignore = false
@@ -261,12 +390,25 @@ export default function WorkoutProgressChart({ workoutId }: { workoutId: string 
   const colorOf: ColorOf = (exerciseId) => `var(--series-${current.colors[exerciseId] ?? 1})`
   const weightLines = shown.filter((exercise) => exercise.hasWeight)
   const repLines = shown.filter((exercise) => exercise.tracksReps)
+  // The range of every exercise's numbers, for the empty grid shown when nothing is switched on:
+  // weights if any exercise has them, otherwise reps
+  const anyWeight = exercises.some((exercise) => exercise.hasWeight)
+  const emptyKey = anyWeight ? weightKey : repsKey
+  const allValues = points.flatMap((point) => exercises.map((exercise) => point[emptyKey(exercise.id)]))
+    .filter((value): value is number => typeof value === 'number')
+  const emptyTicks = ticksFor(allValues.length > 0 ? allValues : [0, 10], anyWeight ? undefined : [1, 2, 5, 10, 20, 25, 50, 100])
   const message = 'text-sm text-zinc-400'
 
   function toggleExercise(exerciseId: string) {
     if (current.ids.includes(exerciseId)) {
       const colors = { ...current.colors }
       delete colors[exerciseId]
+      setDrawnKeys((current) => {
+        const next = new Set(current)
+        next.delete(weightKey(exerciseId))
+        next.delete(repsKey(exerciseId))
+        return next
+      })
       setPicked({ ids: current.ids.filter((id) => id !== exerciseId), colors })
       return
     }
@@ -306,7 +448,20 @@ export default function WorkoutProgressChart({ workoutId }: { workoutId: string 
             </p>
           )}
           {exercises.length > 0 && shown.length === 0 && (
-            <p className={message}>Choose an exercise to show.</p>
+            <ProgressLines
+              title={anyWeight ? 'Heaviest weight' : 'Most reps'}
+              unit={anyWeight ? ' kg' : ''}
+              height={anyWeight ? 280 : 180}
+              points={points}
+              colorOf={colorOf}
+              shown={shown}
+              lines={[]}
+              lineKey={emptyKey}
+              drawnKeys={drawnKeys}
+              onDrawn={markDrawn}
+              emptyText="Choose an exercise to show."
+              ticks={emptyTicks}
+            />
           )}
           {weightLines.length > 0 && (
             <ProgressLines
@@ -318,6 +473,8 @@ export default function WorkoutProgressChart({ workoutId }: { workoutId: string 
               shown={shown}
               lines={weightLines}
               lineKey={weightKey}
+              drawnKeys={drawnKeys}
+              onDrawn={markDrawn}
             />
           )}
           {repLines.length > 0 && (
@@ -330,6 +487,8 @@ export default function WorkoutProgressChart({ workoutId }: { workoutId: string 
               shown={shown}
               lines={repLines}
               lineKey={repsKey}
+              drawnKeys={drawnKeys}
+              onDrawn={markDrawn}
             />
           )}
           {shown.length > 0 && <ProgressTable points={points} exercises={shown} colorOf={colorOf} />}

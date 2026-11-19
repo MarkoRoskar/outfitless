@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api, { isUnauthorized } from '../lib/axios'
 import { MAX_SESSIONS_PER_USER } from '../lib/limits'
@@ -13,9 +13,12 @@ import { ArrowRightIcon, CheckIcon, ChevronDownIcon, TimerIcon } from './icons'
 import Hint from './Hint'
 import RecordBadge from './RecordBadge'
 import LoadError from './LoadError'
+import MuscleGroupPhotos from './MuscleGroupPhotos'
 import Select from './Select'
 import DatePicker from './DatePicker'
 import Loading, { Spinner } from './Loading'
+import Reveal from './Reveal'
+import { listRevealDelay } from '../lib/useReveal'
 
 interface LoggedSet {
   reps: number
@@ -25,6 +28,8 @@ interface LoggedSet {
 
 interface SessionExercise {
   name: string
+  // The exercise's muscle groups now (none if it was deleted), sent by the server for the photos
+  muscleGroups?: string[]
   noWeight: boolean
   loggedSets: LoggedSet[]
   // The set that's a personal record, if any (worked out by the server)
@@ -48,13 +53,44 @@ function formatDuration(session: FinishedSession) {
 
 // One finished workout. The sets stay hidden until the summary is clicked. Its menu always has Edit,
 // and Delete only when onDelete is given.
-function SessionCard({ session, onEdit, onDelete }: { session: FinishedSession; onEdit: () => void; onDelete?: () => void }) {
+function SessionCard({ session, index, onEdit, onDelete }: { session: FinishedSession; index: number; onEdit: () => void; onDelete?: () => void }) {
   const sets = session.exercises.flatMap((exercise) => exercise.loggedSets)
   const loggedCount = sets.filter((set) => set.done).length
+  // Every muscle group the workout worked, each once, in the order the exercises first use them
+  const groups = [...new Set(session.exercises.flatMap((exercise) => exercise.muscleGroups ?? []))]
+
+  // How far down the photos reach: the whole closed card, and on an open card only down to the
+  // line above the exercises, so the sets are on plain card. Measured as the card opens and
+  // closes, like on the other cards. The card is the details' parent.
+  const detailsRef = useRef<HTMLDetailsElement>(null)
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const [photosHeight, setPhotosHeight] = useState<number>()
+  useEffect(() => {
+    const card = detailsRef.current?.parentElement
+    if (!card) return
+    function measure() {
+      const cardBox = card!.getBoundingClientRect()
+      const line = sectionRef.current?.firstElementChild?.getBoundingClientRect()
+      // A closed card's sections aren't drawn, so they have no size
+      const open = detailsRef.current?.open && line && line.height > 0
+      setPhotosHeight(Math.min(cardBox.height, open ? line.top - cardBox.top : Infinity))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <li className={`${card} flex items-start gap-1`}>
-      <details className="group min-w-0 flex-1">
+    // group/card for the photos, which light up when the card is hovered (the details inside
+    // already uses group, for open). isolate keeps them at the card's back, behind its text. That
+    // makes the card its own layer, so while its ⋯ menu is open the card itself is raised, or the
+    // menu would open under the cards below.
+    <Reveal as="li" delay={listRevealDelay(index)} className={`${card} group/card relative isolate has-[[role=menu]]:z-30 flex items-start gap-1`}>
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <MuscleGroupPhotos groups={groups} height={photosHeight} />
+      </div>
+      <details ref={detailsRef} className="group min-w-0 flex-1">
         <summary className="flex items-start justify-between gap-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
           {/* Long names are cut to one line, with all of it on hover and once the card is open */}
           <div className="min-w-0 flex-1 flex flex-col gap-1">
@@ -81,7 +117,7 @@ function SessionCard({ session, onEdit, onDelete }: { session: FinishedSession; 
 
         {/* -mr-9 runs the section under the ⋯ button (32px plus the 4px gap beside it), so its line
             spans the whole card, like the sections on an open exercise card */}
-        <div className="-mr-9">
+        <div ref={sectionRef} className="-mr-9">
         <CardSection label="Exercises">
         <ul className="grid gap-3 sm:grid-cols-2 sm:gap-x-8">
           {/* Every planned set as plain text, numbered like during the workout. A set that wasn't
@@ -128,7 +164,7 @@ function SessionCard({ session, onEdit, onDelete }: { session: FinishedSession; 
           ]}
         />
       </div>
-    </li>
+    </Reveal>
   )
 }
 
@@ -302,18 +338,18 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
   return (
     <section className="flex flex-col gap-3">
       {limit !== undefined && (
-        <div className="flex items-baseline justify-between gap-4">
+        <Reveal className="flex items-baseline justify-between gap-4">
           <h2 className={pageSectionHeading}>Most recent workouts</h2>
           {hasMore && (
             <Link to="/history" className={listLink}>View all</Link>
           )}
-        </div>
+        </Reveal>
       )}
 
       {/* The History page's filters, styled like the Exercises toolbar. On phones the pair splits
           the row in half. Shown once there's something to filter, and kept while filtering. */}
       {limit === undefined && (filtering || sessions.length > 0) && (
-        <div className="grid grid-cols-2 gap-3 sm:flex mb-1">
+        <Reveal onLoad className="grid grid-cols-2 gap-3 sm:flex mb-1">
           <div className="min-w-0">
             <label htmlFor="history-workout-filter" className="sr-only">Workout</label>
             <Select
@@ -336,7 +372,7 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
               className={`w-full sm:w-44 ${toolbarField}`}
             />
           </div>
-        </div>
+        </Reveal>
       )}
 
       {/* The custom range's two days, under the filters. Either can be left empty for an open end. */}
@@ -389,10 +425,11 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
 
       {status === 'ready' && sessions.length > 0 && (
         <ul className="flex flex-col gap-2">
-          {sessions.map((session) => (
+          {sessions.map((session, index) => (
             <SessionCard
               key={session._id}
               session={session}
+              index={index}
               onEdit={() => { setSavedNote(''); setEditing(session) }}
               onDelete={limit === undefined ? () => setDeleting(session) : undefined}
             />

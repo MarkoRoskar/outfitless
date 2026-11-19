@@ -25,7 +25,7 @@ export const helpText: Record<string, { title: string; points: ReactNode[] }> = 
     points: [
       <>Add exercises with <b>+ New</b>, in the order you’ll do them. Drag the grip to reorder.</>,
       <>Each exercise has a <b>target</b>: the weight and reps to aim for next time. Tap a card to see its plan.</>,
-      'After each session the target updates by itself: your heaviest set that reached the minimum reps becomes the new target, going over the rep range adds the increment, and missing the minimum on every set takes it off.',
+      'After each session the target updates by itself: your heaviest set that reached the minimum reps becomes the new target, reaching the top of the rep range adds the increment, and missing the minimum on your first set takes it off.',
       <><b>Start workout</b> begins a session. <b>Progress</b> at the bottom charts how each exercise has gone.</>,
     ],
   },
@@ -61,7 +61,7 @@ export const helpText: Record<string, { title: string; points: ReactNode[] }> = 
     points: [
       'Fill in the reps and weight you did, then tick the set. Ticked sets are saved right away.',
       'Under each set, Last time shows what you did before, or Target what to aim for.',
-      'Ticking a set starts the rest timer. It beeps when it’s time for the next set.',
+      'Ticking a set starts the rest timer. It plays a sound when it’s time for the next set.',
       <><b>Finish workout</b> saves it and updates your targets. You can leave and come back, and <b>Discard</b> throws it away.</>,
     ],
   },
@@ -69,7 +69,7 @@ export const helpText: Record<string, { title: string; points: ReactNode[] }> = 
     title: 'Settings',
     points: [
       'Change your password. Your other devices are logged out, this one stays logged in. Forgot it? The dialog can email you a reset link.',
-      'Turn the rest timer’s beep on or off. It’s saved on this device only.',
+      'Choose the sounds for the rest timer and for finishing a workout, how loud they are, or turn them off. Picking one plays it. They’re saved on this device only.',
       <><b>Delete account</b> removes your account and everything in it for good.</>,
     ],
   },

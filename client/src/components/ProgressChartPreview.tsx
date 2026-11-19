@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { card } from '../lib/styles'
+import { ticksFor } from '../lib/chartTicks'
 
 // The homepage's copy of the progress chart on a workout's page, drawn by hand so the homepage
 // doesn't load the chart library. It works like the real one: the buttons switch exercises on
@@ -52,25 +53,6 @@ const CHART = { width: 480, height: 220, left: 52, right: 16, top: 12, bottom: 3
 const plotLeft = CHART.left + 16
 const plotWidth = CHART.width - CHART.left - CHART.right - 32
 const x = (index: number) => plotLeft + (index * plotWidth) / (dates.length - 1)
-
-// Evenly spaced round numbers from just below the lowest shown weight to just above the highest,
-// at most 6, so the lines use the height well. A weight right on a round number gets a step of
-// room past it, so its dot doesn't sit on the chart's edge.
-function ticksFor(weights: number[]) {
-  const min = Math.min(...weights)
-  const max = Math.max(...weights)
-  const range = (step: number) => {
-    const low = Math.floor(min / step) * step
-    const high = Math.ceil(max / step) * step
-    return { low: Math.max(low === min ? low - step : low, 0), high: high === max ? high + step : high }
-  }
-  const step = [2.5, 5, 10, 20, 25, 50, 100].find((candidate) => {
-    const { low, high } = range(candidate)
-    return (high - low) / candidate <= 5
-  }) ?? 100
-  const { low, high } = range(step)
-  return Array.from({ length: Math.round((high - low) / step) + 1 }, (_, index) => low + index * step)
-}
 
 export default function ProgressChartPreview() {
   const [shownIds, setShownIds] = useState(['bench'])
@@ -244,7 +226,7 @@ export default function ProgressChartPreview() {
             color. It sits beside the session, on whichever side has room. */}
         {active !== null && (
           <div
-            className="pointer-events-none absolute top-2 max-w-64 flex flex-col gap-1 p-3 rounded-xl border border-white/5 bg-zinc-900/80 backdrop-blur-xl text-xs shadow-lg"
+            className="card-fade pointer-events-none absolute top-2 max-w-64 flex flex-col gap-1 p-3 rounded-xl border border-white/5 bg-zinc-900/80 backdrop-blur-xl text-xs shadow-lg"
             style={
               active < (dates.length - 1) / 2
                 ? { left: `calc(${(x(active) / CHART.width) * 100}% + 12px)` }

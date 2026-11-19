@@ -21,6 +21,10 @@ import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
 import Loading from '../components/Loading'
+import Reveal from '../components/Reveal'
+import Expand from '../components/Expand'
+import MuscleGroupPhotos from '../components/MuscleGroupPhotos'
+import { listRevealDelay, useReveal } from '../lib/useReveal'
 
 // Exercise as returned by the API (_id is MongoDB's ID field)
 interface Exercise {
@@ -230,12 +234,33 @@ function ExerciseDialog({ exercise, existing, onClose, onSaved }: {
 // muscle groups ("Chest · Triceps", as on Workouts), each cut short with "…" if needed.
 // Every card opens, by tapping it or its arrow, into labeled sections split by thin lines:
 // the full name, every muscle group, and the note when there is one.
-function ExerciseCard({ exercise, onEdit, onDelete }: { exercise: Exercise; onEdit: () => void; onDelete: () => void }) {
+function ExerciseCard({ exercise, index, onEdit, onDelete }: { exercise: Exercise; index: number; onEdit: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false)
+  const reveal = useReveal({ delay: listRevealDelay(index) })
   const groups = exercise.muscleGroups.map((group) => muscleGroupLabels[group] ?? group).join(' · ')
   const toggle = () => setOpen((current) => !current)
   // Where the pointer went down, to tell a tap from a drag
   const pressedAt = useRef<{ x: number; y: number } | null>(null)
+
+  // How far down the muscle group photos reach: the whole card, or with a note only down to the
+  // line above it, so the note is on plain card. Measured as the card opens and closes, so the
+  // photos grow and shrink with it.
+  const cardRef = useRef<HTMLLIElement | null>(null)
+  const noteRef = useRef<HTMLDivElement>(null)
+  const [photosHeight, setPhotosHeight] = useState<number>()
+  useEffect(() => {
+    const card = cardRef.current
+    if (!card) return
+    function measure() {
+      const cardBox = card!.getBoundingClientRect()
+      const line = noteRef.current?.firstElementChild?.getBoundingClientRect()
+      setPhotosHeight(Math.min(cardBox.height, line ? line.top - cardBox.top : Infinity))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [])
 
   // A tap anywhere on the card, top to bottom, opens or closes it. A drag doesn't, so selecting
   // part of a note to copy it doesn't snap the card shut. Judged by how far the pointer moved
@@ -248,13 +273,17 @@ function ExerciseCard({ exercise, onEdit, onDelete }: { exercise: Exercise; onEd
 
   return (
     <li
+      {...reveal}
+      ref={(node) => { reveal.ref(node); cardRef.current = node }}
       onPointerDown={(e) => { pressedAt.current = { x: e.clientX, y: e.clientY } }}
       // A double tap would select the word under it, so a second quick press doesn't select
       onMouseDown={(e) => { if (e.detail > 1) e.preventDefault() }}
       onClick={handleCardClick}
-      className="p-4 rounded-2xl cursor-pointer bg-zinc-900/55 ring-1 ring-inset ring-white/4 hover:bg-zinc-800/45 transition-colors duration-200"
+      className={`${reveal.className} group relative card-fade p-4 rounded-2xl cursor-pointer bg-zinc-900/55 ring-1 ring-inset ring-white/4 hover:bg-zinc-800/45 transition-colors duration-200`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <MuscleGroupPhotos groups={exercise.muscleGroups} height={photosHeight} />
+      {/* relative, so the card's content is drawn above the photos */}
+      <div className="relative flex items-start justify-between gap-2">
         <div
           role="button"
           tabIndex={0}
@@ -306,18 +335,20 @@ function ExerciseCard({ exercise, onEdit, onDelete }: { exercise: Exercise; onEd
 
       {/* Below the buttons, so these get the card's full width. Like the rest of the card,
           tapping them closes it, so a long note can be closed from the bottom. */}
-      {open && (
-        <div>
+      <Expand open={open}>
+        <div className="relative">
           <CardSection label={exercise.muscleGroups.length === 1 ? 'Muscle group' : 'Muscle groups'}>
             {groups}
           </CardSection>
           {exercise.note && (
-            <CardSection label="Note">
-              <span className="whitespace-pre-line">{exercise.note}</span>
-            </CardSection>
+            <div ref={noteRef}>
+              <CardSection label="Note">
+                <span className="whitespace-pre-line">{exercise.note}</span>
+              </CardSection>
+            </div>
           )}
         </div>
-      )}
+      </Expand>
     </li>
   )
 }
@@ -402,10 +433,10 @@ export default function ExercisesPage() {
 
       <main className="relative flex flex-col flex-1 max-w-3xl mx-auto w-full px-6 sm:px-10 pt-8 pb-16 sm:pt-16">
 
-        <div className="flex items-center gap-2 mb-6">
+        <Reveal onLoad className="flex items-center gap-2 mb-6">
           <h1 className={mainPageTitle}>Exercises</h1>
           <PageHelp {...helpText.exercises} />
-        </div>
+        </Reveal>
 
         {status === 'loading' && (
           <Loading>Loading your exercises…</Loading>
@@ -425,7 +456,7 @@ export default function ExercisesPage() {
         {status === 'ready' && exercises.length > 0 && (
           // Two rows at every width: searching and creating, then sorting and filtering. The two
           // dropdowns stay together as a pair, so no width can split them.
-          <div className="flex flex-col gap-3 mb-4">
+          <Reveal onLoad delay={60} className="flex flex-col gap-3 mb-4">
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <SearchField
@@ -467,7 +498,7 @@ export default function ExercisesPage() {
                 />
               </div>
             </div>
-          </div>
+          </Reveal>
         )}
 
         {status === 'ready' && exercises.length > 0 && visibleExercises.length === 0 && (
@@ -484,10 +515,11 @@ export default function ExercisesPage() {
 
         {status === 'ready' && visibleExercises.length > 0 && (
           <ul className="flex flex-col gap-2">
-            {visibleExercises.slice(0, shownCount).map((exercise) => (
+            {visibleExercises.slice(0, shownCount).map((exercise, index) => (
               <ExerciseCard
                 key={exercise._id}
                 exercise={exercise}
+                index={index}
                 onEdit={() => setEditing(exercise)}
                 onDelete={() => setDeleting(exercise)}
               />

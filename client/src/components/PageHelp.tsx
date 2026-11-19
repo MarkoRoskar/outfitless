@@ -23,7 +23,7 @@ export default function PageHelp({ title, points }: { title: string; points: Rea
       </button>
 
       {open && (
-        <Modal title={title} busy={false} onClose={() => setOpen(false)}>
+        <Modal title={title} busy={false} onClose={() => setOpen(false)} closeOnOutsideClick>
           <ul className="flex flex-col gap-2.5 text-sm leading-relaxed text-zinc-300">
             {points.map((point, index) => (
               <li key={index} className="flex gap-2.5">

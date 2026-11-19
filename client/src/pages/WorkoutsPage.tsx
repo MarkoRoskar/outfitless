@@ -9,6 +9,7 @@ import { MAX_NOTE_LENGTH, MAX_REST_SECONDS } from '../lib/limits'
 import { fieldClass, inlineLink, labelClass, primaryButton, secondaryButton, mainPageTitle } from '../lib/styles'
 import SearchField from '../components/SearchField'
 import ActionMenu from '../components/ActionMenu'
+import MuscleGroupPhotos from '../components/MuscleGroupPhotos'
 import NewButton from '../components/NewButton'
 import Hint from '../components/Hint'
 import { NoteIcon } from '../components/icons'
@@ -22,6 +23,8 @@ import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
 import Loading from '../components/Loading'
+import Reveal from '../components/Reveal'
+import { listRevealDelay, useReveal } from '../lib/useReveal'
 
 // Workout as returned by the API
 interface Workout {
@@ -31,6 +34,8 @@ interface Workout {
   restBetweenExercises: number
   // Only in the list, not when one workout is created or saved
   exerciseNames?: string[]
+  // Every muscle group its exercises work, each once, for the card's photos. Also only in the list.
+  muscleGroups?: string[]
 }
 
 // Pop-up form for creating (workout is null) or editing a workout
@@ -145,8 +150,9 @@ function WorkoutDialog({ workout, onClose, onSaved }: {
 }
 
 // One workout row. Only the grip starts a drag, so clicking anywhere else still opens the workout.
-function SortableWorkout({ workout, disabled, handleOff, onEdit, onDelete }: {
+function SortableWorkout({ workout, index, disabled, handleOff, onEdit, onDelete }: {
   workout: Workout
+  index: number
   disabled: boolean
   // While searching only part of the list is shown, so reordering is off. The grip stays, dimmed,
   // so the cards don't shift sideways as the search starts and ends.
@@ -155,13 +161,25 @@ function SortableWorkout({ workout, disabled, handleOff, onEdit, onDelete }: {
   onDelete: () => void
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: workout._id, disabled })
+  const reveal = useReveal({ delay: listRevealDelay(index) })
 
   return (
     <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`group relative flex items-start gap-3 p-4 rounded-2xl bg-zinc-900/55 ring-1 ring-inset ring-white/4 hover:bg-zinc-800/45 transition-colors duration-200 ${isDragging ? 'z-20 shadow-lg bg-zinc-900!' : ''}`}
+      ref={(node) => { reveal.ref(node); setNodeRef(node) }}
+      data-variant={reveal['data-variant']}
+      onAnimationEnd={reveal.onAnimationEnd}
+      style={{ ...reveal.style, transform: CSS.Translate.toString(transform), transition }}
+      // isolate makes the card its own layer, so the photos can sit at its back, behind the text.
+      // While its ⋯ menu is open the card itself is raised, or the menu would open under the cards below.
+      className={`${reveal.className} group relative isolate has-[[role=menu]]:z-30 flex items-start gap-3 card-fade p-4 rounded-2xl bg-zinc-900/55 ring-1 ring-inset ring-white/4 hover:bg-zinc-800/45 transition-colors duration-200 ${isDragging ? 'z-20 shadow-lg bg-zinc-900!' : ''}`}
     >
+      {/* The photos of every muscle group the workout's exercises work, as on the exercise cards.
+          They stop short of the ⋯ button (32 px inside the 16 px padding). Kept at the card's
+          back rather than lifting the text above them, since a positioned text block would
+          shrink the stretched link to itself. */}
+      <div className="absolute inset-0 -z-10">
+        <MuscleGroupPhotos groups={workout.muscleGroups ?? []} right={56} />
+      </div>
       {/* Sits above the stretched link, like the buttons */}
       <DragHandle
         ref={setActivatorNodeRef}
@@ -276,7 +294,7 @@ export default function WorkoutsPage() {
     setWorkouts((current) =>
       current.some((w) => w._id === saved._id)
         // A saved workout comes back without its exercise names, so keep the ones already shown
-        ? current.map((w) => (w._id === saved._id ? { ...saved, exerciseNames: w.exerciseNames } : w))
+        ? current.map((w) => (w._id === saved._id ? { ...saved, exerciseNames: w.exerciseNames, muscleGroups: w.muscleGroups } : w))
         : [saved, ...current]
     )
     setEditing(null)
@@ -326,10 +344,10 @@ export default function WorkoutsPage() {
       <main className="relative flex flex-col flex-1 max-w-3xl mx-auto w-full px-6 sm:px-10 pt-8 pb-16 sm:pt-16">
 
         <div className="flex flex-col gap-3 mb-6">
-          <div className="flex items-center gap-2">
+          <Reveal onLoad className="flex items-center gap-2">
             <h1 className={mainPageTitle}>Workouts</h1>
             <PageHelp {...helpText.workouts} />
-          </div>
+          </Reveal>
           {/* Workouts are built from exercises, so without any there's nothing to add to them */}
           {status === 'ready' && exerciseCount === 0 && (
             <Hint>
@@ -372,7 +390,7 @@ export default function WorkoutsPage() {
 
         {/* Searching and creating share the row right above the list */}
         {status === 'ready' && workouts.length > 0 && (
-          <div className="flex items-center gap-3 mb-4">
+          <Reveal onLoad delay={60} className="flex items-center gap-3 mb-4">
             <div className="flex-1 min-w-0">
               <SearchField
                 label="Search workouts by name"
@@ -383,7 +401,7 @@ export default function WorkoutsPage() {
               />
             </div>
             <NewButton onClick={() => setEditing('new')} />
-          </div>
+          </Reveal>
         )}
 
         {status === 'ready' && workouts.length > 0 && visibleWorkouts.length === 0 && (
@@ -397,10 +415,11 @@ export default function WorkoutsPage() {
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={visibleWorkouts.slice(0, shownCount).map((workout) => workout._id)} strategy={verticalListSortingStrategy}>
               <ul className="flex flex-col gap-2">
-                {visibleWorkouts.slice(0, shownCount).map((workout) => (
+                {visibleWorkouts.slice(0, shownCount).map((workout, index) => (
                   <SortableWorkout
                     key={workout._id}
                     workout={workout}
+                    index={index}
                     // Dragging needs the full list, so it's off while searching
                     disabled={reordering || searchText !== ''}
                     handleOff={searchText !== ''}

@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import api, { isUnauthorized } from '../lib/axios'
 import { MAX_REPS, MAX_WEIGHT } from '../lib/limits'
 import { clearSetDrafts, loadSetDraft, saveSetDraft } from '../lib/setDrafts'
-import { isRestSoundOn, playRestEndSound, setRestSoundOn, unlockSound } from '../lib/sound'
+import { isRestSoundOn, playFinishSound, playRestEndSound, setRestSoundOn, unlockSound } from '../lib/sound'
 import { useWakeLock } from '../lib/useWakeLock'
-import { accentButton, card, dangerSecondaryButton, fieldClass, secondaryButton, pageTitle, softPill } from '../lib/styles'
+import { accentButton, accentSecondaryButton, card, dangerSecondaryButton, fieldClass, secondaryButton, pageTitle, softPill } from '../lib/styles'
 import BackLink from '../components/BackLink'
+import Confetti from '../components/Confetti'
 import RecordBadge from '../components/RecordBadge'
-import { ArrowLeftIcon, CheckIcon, ChevronDownIcon, NoteIcon, SoundOffIcon, SoundOnIcon } from '../components/icons'
+import { ArrowLeftIcon, CheckIcon, ChevronDownIcon, CloseIcon, NoteIcon, SoundOffIcon, SoundOnIcon } from '../components/icons'
 import { useAuthStore } from '../store/authStore'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import Modal from '../components/Modal'
@@ -19,6 +21,9 @@ import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
 import Loading from '../components/Loading'
+import Reveal from '../components/Reveal'
+import { listRevealDelay } from '../lib/useReveal'
+import { nextCurrentNumbers } from '../lib/progression'
 
 interface LoggedSet {
   reps: number
@@ -42,6 +47,8 @@ interface SessionExercise {
   // The target when the session started, shown under sets with no "Last time". Missing from older sessions.
   targetReps?: number
   targetWeight?: number
+  // How much the weight goes up or down. Missing for no-weight and max-rep exercises.
+  weightIncrement?: number
   // On a finished session: the set that's a personal record, if any
   recordSetIndex?: number
 }
@@ -112,34 +119,39 @@ function FinishSummary({ session, changes }: { session: Session; changes: Weight
 
   return (
     <div className="min-h-dvh flex flex-col bg-surface text-zinc-50">
+      {/* A win: confetti fires once the summary is on screen */}
+      <Confetti delay={150} />
 
       <Navbar />
       <PageBackdrop />
 
       <main className="relative flex flex-col flex-1 max-w-lg mx-auto w-full px-6 sm:px-10 pt-8 pb-16 sm:pt-16 gap-6">
         {/* Laid out like a workout's page: the title, then a line of details. Done below leads back. */}
-        <div className="min-w-0 flex flex-col gap-2">
+        <Reveal onLoad className="min-w-0 flex flex-col gap-2">
           <h1 title={session.workoutName} className={`${pageTitle} truncate`}>{session.workoutName}</h1>
           <p className="flex items-center gap-2 text-xs text-zinc-400 tabular-nums">
             <span className={softPill}>Finished</span>
             {allSets.filter((set) => set.done).length} of {allSets.length} sets completed
           </p>
-        </div>
+        </Reveal>
 
         <ul className="flex flex-col gap-2">
-          {rows.map(({ exercise, exerciseIndex, logged, result }) => {
+          {rows.map(({ exercise, exerciseIndex, logged, result }, index) => {
+            // A record celebrates once its card has popped in
+            const cardDelay = 80 + listRevealDelay(index)
+            const recordDelay = cardDelay + 350
             return (
-              <li key={exerciseIndex} className={`${card} flex items-center justify-between gap-4`}>
+              <Reveal as="li" key={exerciseIndex} variant="pop" delay={cardDelay} className={`${card} flex items-center justify-between gap-4`}>
                 <div className="min-w-0 flex-1 flex flex-col gap-0.5">
                   <div className="min-w-0 flex items-center gap-2">
                     <h2 title={exercise.name} className="min-w-0 text-sm font-semibold truncate">{exercise.name}</h2>
-                    {exercise.recordSetIndex !== undefined && <span className="shrink-0"><RecordBadge /></span>}
+                    {exercise.recordSetIndex !== undefined && <span className="shrink-0"><RecordBadge celebrateDelay={recordDelay} /></span>}
                   </div>
                   <p className="text-xs text-zinc-400 tabular-nums">
                     {logged} of {exercise.loggedSets.length} {exercise.loggedSets.length === 1 ? 'set' : 'sets'}
                     {/* The record itself, so it's clear what was beaten */}
                     {exercise.recordSetIndex !== undefined && exercise.loggedSets[exercise.recordSetIndex] && (
-                      <span className="ml-3 text-accent-dim">
+                      <span className="ml-3 text-accent-dim record-glow" style={{ '--record-delay': `${recordDelay}ms` } as CSSProperties}>
                         New best: {describeSet(exercise.loggedSets[exercise.recordSetIndex])}
                       </span>
                     )}
@@ -148,14 +160,16 @@ function FinishSummary({ session, changes }: { session: Session; changes: Weight
                 <p className={`shrink-0 tabular-nums ${result.highlight ? 'text-sm font-semibold' : 'text-xs text-zinc-400'}`}>
                   {result.text}
                 </p>
-              </li>
+              </Reveal>
             )
           })}
         </ul>
 
-        <Link to={`/workouts/${session.workoutId}`} replace className={`inline-flex items-center justify-center ${accentButton}`}>
-          Done
-        </Link>
+        <Reveal delay={200} className="flex flex-col">
+          <Link to={`/workouts/${session.workoutId}`} replace className={`inline-flex items-center justify-center ${accentButton}`}>
+            Done
+          </Link>
+        </Reveal>
       </main>
     </div>
   )
@@ -165,7 +179,27 @@ function FinishSummary({ session, changes }: { session: Session; changes: Weight
 // The top of an exercise's card: its name on one line and its note on two. When either is cut
 // off, tapping the header (or the chevron) shows all of it. Short ones have nothing to open, so
 // they get no chevron and the header isn't tappable.
+// What finishing will do to an exercise's target, once all its sets are ticked, worked out by
+// the same rule as the server's (lib/progression.ts) and worded like the summary at the end:
+// "+2.5 kg next time", "Reps 8 → 10 next time". Null until every set is ticked, and for older
+// workouts that didn't save the target they started from.
+function nextTimeChange(exercise: SessionExercise) {
+  if (!exercise.loggedSets.every((set) => set.done)) return null
+  if (exercise.amrap) return { text: 'Target stays', highlight: false }
+  if (exercise.targetReps === undefined || (!exercise.noWeight && exercise.targetWeight === undefined)) return null
+  const next = nextCurrentNumbers(exercise)
+  if (!next) return null
+  const result = describeChange(exercise, exercise.loggedSets.length, {
+    exerciseIndex: 0,
+    weightChange: exercise.noWeight ? 0 : Math.round(((next.currentWeight ?? 0) - (exercise.targetWeight ?? 0)) * 100) / 100,
+    repsBefore: exercise.targetReps,
+    repsAfter: next.currentReps,
+  })
+  return { text: result.highlight ? `${result.text} next time` : 'Same target next time', highlight: result.highlight }
+}
+
 function ExerciseHeader({ exercise }: { exercise: SessionExercise }) {
+  const change = nextTimeChange(exercise)
   const [open, setOpen] = useState(false)
   const [cutOff, setCutOff] = useState(false)
   const nameRef = useRef<HTMLHeadingElement>(null)
@@ -211,6 +245,18 @@ function ExerciseHeader({ exercise }: { exercise: SessionExercise }) {
           </p>
         )}
       </div>
+      {/* Pops in at the top right once the last set is ticked, like on the homepage. Green when
+          the target moves, gray when it stays. */}
+      {change && (
+        <span
+          role="status"
+          className={`next-time-chip shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+            change.highlight ? 'bg-accent text-black' : 'bg-zinc-800 text-zinc-100 ring-1 ring-white/10'
+          }`}
+        >
+          {change.text}
+        </span>
+      )}
       {cutOff && (
         <button
           type="button"
@@ -226,7 +272,9 @@ function ExerciseHeader({ exercise }: { exercise: SessionExercise }) {
   )
 }
 
-function RestTimer({ seconds, onFinish, onSkip }: { seconds: number; onFinish: () => void; onSkip: () => void }) {
+// Counts down, beeps at 0:00 (if switched on) and stays there until closed, or until the next
+// set starts a new rest. onClose is Skip while counting and × at 0:00.
+function RestTimer({ seconds, onClose }: { seconds: number; onClose: () => void }) {
   const [remaining, setRemaining] = useState(seconds)
 
   useEffect(() => {
@@ -236,14 +284,15 @@ function RestTimer({ seconds, onFinish, onSkip }: { seconds: number; onFinish: (
       const left = Math.ceil((endsAt - Date.now()) / 1000)
       if (left <= 0) {
         clearInterval(timer)
-        onFinish()
+        setRemaining(0)
+        playRestEndSound()
       } else {
         setRemaining(left)
       }
     }, 250)
 
     return () => clearInterval(timer)
-  }, [seconds, onFinish])
+  }, [seconds])
 
   const minutes = Math.floor(remaining / 60)
   const secondsLeft = String(remaining % 60).padStart(2, '0')
@@ -258,23 +307,49 @@ function RestTimer({ seconds, onFinish, onSkip }: { seconds: number; onFinish: (
     // On phones it sits above the tab bar, which is about 4rem tall. The light green border sets it
     // apart from the exercise cards it floats over, and
     // unlike other cards it is solid, so the set rows scrolling under it don't show through.
-    <div role="timer" className={`${card} bg-zinc-900! border border-accent-dim sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-4 z-10 flex items-center justify-between gap-4 shadow-lg`}>
+    // At 0:00 it glows green and gives a little shake (rest-done in index.css), then stays, with
+    // the green border gone (a plain one of the same width, so nothing moves) like on the homepage
+    <div role="timer" className={`${card} bg-zinc-900! border sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-4 z-10 flex items-center justify-between gap-4 shadow-lg ${remaining === 0 ? 'rest-done border-white/6' : 'border-accent-dim'}`}>
       <div className="flex items-baseline gap-2">
         <span className="text-xs text-zinc-400">Rest</span>
-        <span className="font-mono text-xl font-semibold text-accent tabular-nums">{minutes}:{secondsLeft}</span>
+        {/* Each of the last 3 seconds pulses, like the homepage's timer. The key changes every
+            second, so the pulse plays again each time. */}
+        <span
+          key={remaining}
+          className={`inline-block origin-left font-mono text-xl font-semibold text-accent tabular-nums ${
+            remaining > 0 && remaining <= 3 ? 'timer-pulse' : ''
+          }`}
+        >
+          {minutes}:{secondsLeft}
+        </span>
       </div>
       <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={toggleSound}
-          aria-pressed={!soundOn}
-          aria-label={soundOn ? 'Mute the beep' : 'Turn the beep on'}
-          title={soundOn ? 'Mute the beep' : 'Turn the beep on'}
-          className="h-10 w-10 flex items-center justify-center rounded-xl text-zinc-400 hover:bg-white/5 hover:text-zinc-50 transition-colors duration-200"
-        >
-          {soundOn ? <SoundOnIcon size={18} /> : <SoundOffIcon size={18} />}
-        </button>
-        <button onClick={onSkip} className={secondaryButton}>Skip</button>
+        {remaining > 0 ? (
+          <>
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-pressed={!soundOn}
+              aria-label={soundOn ? 'Mute the beep' : 'Turn the beep on'}
+              title={soundOn ? 'Mute the beep' : 'Turn the beep on'}
+              className="h-10 w-10 flex items-center justify-center rounded-xl text-zinc-400 hover:bg-white/5 hover:text-zinc-50 transition-colors duration-200"
+            >
+              {soundOn ? <SoundOnIcon size={18} /> : <SoundOffIcon size={18} />}
+            </button>
+            <button onClick={onClose} className={secondaryButton}>Skip</button>
+          </>
+        ) : (
+          // The rest is over: the beep has played and there's nothing to skip, so only closing is left
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close the rest timer"
+            title="Close"
+            className="h-10 w-10 flex items-center justify-center rounded-xl text-zinc-400 hover:bg-white/5 hover:text-zinc-50 transition-colors duration-200"
+          >
+            <CloseIcon size={18} />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -318,9 +393,18 @@ function SetRow({ sessionId, exerciseIndex, setIndex, set, last, target, noWeigh
   const weightValid = noWeight || (weight !== '' && Number(weight) >= 0 && Number(weight) <= MAX_WEIGHT)
   const label = `set ${number} of ${exerciseName}`
 
+  // Set by ticking the set, until its animation has played: the button squashes and springs back
+  // and the row flashes green (set-tick and set-row-flash in index.css). Not on unticking, and
+  // not for sets already done when the page opens.
+  const [justTicked, setJustTicked] = useState(false)
+
   return (
     <li className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
+      {/* The negative margin and padding give the flash room around the row without moving it */}
+      <div
+        onAnimationEnd={(e) => { if (e.animationName === 'set-row-flash') setJustTicked(false) }}
+        className={`-mx-2 px-2 -my-1 py-1 rounded-xl flex items-center gap-2 ${justTicked ? 'set-row-flash' : ''}`}
+      >
       <span className="w-4 shrink-0 text-xs font-mono font-bold text-accent-dim">{number}</span>
       <input
         type="number"
@@ -349,11 +433,16 @@ function SetRow({ sessionId, exerciseIndex, setIndex, set, last, target, noWeigh
         </>
       )}
       <button
-        onClick={() => onToggle(Number(reps), noWeight ? undefined : Number(weight), !set.done)}
+        onClick={() => {
+          setJustTicked(!set.done)
+          onToggle(Number(reps), noWeight ? undefined : Number(weight), !set.done)
+        }}
         disabled={!repsValid || !weightValid}
         aria-pressed={set.done}
         aria-label={set.done ? `Undo ${label}` : `Log ${label}`}
         className={`h-10 w-10 shrink-0 flex items-center justify-center rounded-xl border transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
+          justTicked ? 'set-tick' : ''
+        } ${
           set.done
             ? 'border-accent-dim bg-accent-dim text-black'
             : 'border-white/10 text-zinc-400 hover:border-accent-dim hover:text-accent-dim'
@@ -393,12 +482,6 @@ export default function SessionPage() {
   // A locked phone can pause the rest timer and its beep
   useWakeLock(status === 'ready' && !changes && !session?.finishedAt)
 
-  // Kept stable, because RestTimer's effect restarts the countdown when this changes
-  const finishRest = useCallback(() => {
-    playRestEndSound()
-    setRest(null)
-  }, [])
-
   useEffect(() => {
     if (!token) return
     let ignore = false
@@ -427,12 +510,14 @@ export default function SessionPage() {
   // Right after finishing here, though, the summary below is shown instead.
   if (session?.finishedAt && !changes) return <Navigate to={`/workouts/${session.workoutId}`} replace />
 
-  function setDone(exerciseIndex: number, setIndex: number, done: boolean) {
+  // With the numbers as typed, so the next-time chip works from what was logged rather than the
+  // numbers the set started with
+  function setDone(exerciseIndex: number, setIndex: number, done: boolean, values?: { reps: number; weight: number | undefined }) {
     setSession((current) => current && {
       ...current,
       exercises: current.exercises.map((exercise, i) => i !== exerciseIndex ? exercise : {
         ...exercise,
-        loggedSets: exercise.loggedSets.map((set, j) => (j === setIndex ? { ...set, done } : set)),
+        loggedSets: exercise.loggedSets.map((set, j) => (j === setIndex ? { ...set, ...values, done } : set)),
       }),
     })
   }
@@ -468,7 +553,7 @@ export default function SessionPage() {
 
     unlockSound()
     setError('')
-    setDone(exerciseIndex, setIndex, done)
+    setDone(exerciseIndex, setIndex, done, { reps, weight })
     setRest((current) => (seconds > 0 ? { seconds, id: (current?.id ?? 0) + 1 } : null))
 
     const save = saveSet(exerciseIndex, setIndex, reps, weight, done)
@@ -480,6 +565,8 @@ export default function SessionPage() {
     if (!session) return
     setError('')
     setFinishing(true)
+    // This click is what lets the browser play the finish sound once the server answers
+    unlockSound()
 
     // Otherwise a set that's still saving would be left out of the progression.
     // If one fails, stop here so its error shows and it can be logged again.
@@ -498,6 +585,8 @@ export default function SessionPage() {
       // The finished session from the server, which marks any personal records for the summary
       if (data.session) setSession(data.session)
       setChanges(data.changes)
+      // With the confetti, if it's switched on in Settings
+      playFinishSound()
     } catch (err) {
       if (isUnauthorized(err)) {
         logout()
@@ -550,7 +639,7 @@ export default function SessionPage() {
           <>
             {/* Laid out like the workout's page: back link, title, then the note with its icon.
                 Leaving keeps the workout in progress, so it can be resumed later. */}
-            <div className="min-w-0 flex flex-col gap-2">
+            <Reveal onLoad className="min-w-0 flex flex-col gap-2">
               <BackLink to={`/workouts/${session.workoutId}`}>Workout</BackLink>
               <div className="flex items-start gap-2">
                 <h1 className={`${pageTitle} min-w-0 wrap-break-word`}>{session.workoutName}</h1>
@@ -567,7 +656,7 @@ export default function SessionPage() {
                 <span className={softPill}>In progress</span>
                 {loggedCount} of {allSets.length} sets logged
               </p>
-            </div>
+            </Reveal>
 
             {error && (
               <p role="alert" className="text-xs text-red-500">{error}</p>
@@ -575,7 +664,7 @@ export default function SessionPage() {
 
             <ul className="flex flex-col gap-3">
               {session.exercises.map((exercise, exerciseIndex) => (
-                <li key={exerciseIndex} className={`${card} flex flex-col gap-3`}>
+                <Reveal as="li" key={exerciseIndex} delay={60 + listRevealDelay(exerciseIndex)} className={`${card} flex flex-col gap-3`}>
                   <ExerciseHeader exercise={exercise} />
                   <ol className="flex flex-col gap-2">
                     {exercise.loggedSets.map((set, setIndex) => (
@@ -596,22 +685,22 @@ export default function SessionPage() {
                       />
                     ))}
                   </ol>
-                </li>
+                </Reveal>
               ))}
             </ul>
 
-            <div className="flex justify-end gap-2">
+            <Reveal className="flex justify-end gap-2">
               <button onClick={() => setDiscarding(true)} disabled={finishing} className={dangerSecondaryButton}>Discard</button>
               <button
                 onClick={() => (loggedCount < allSets.length ? setConfirmingFinish(true) : finish())}
                 disabled={finishing}
-                className={accentButton}
+                className={accentSecondaryButton}
               >
                 {finishing ? 'Finishing…' : 'Finish workout'}
               </button>
-            </div>
+            </Reveal>
 
-            {rest && <RestTimer key={rest.id} seconds={rest.seconds} onFinish={finishRest} onSkip={() => setRest(null)} />}
+            {rest && <RestTimer key={rest.id} seconds={rest.seconds} onClose={() => setRest(null)} />}
           </>
         )}
 

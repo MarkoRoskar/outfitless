@@ -4,7 +4,7 @@ import { isAxiosError } from 'axios'
 import api, { isUnauthorized } from '../lib/axios'
 import { accentButton, card, inlineLink, secondaryButton, sectionHeading, mainPageTitle } from '../lib/styles'
 import Hint from './Hint'
-import { PlayIcon } from './icons'
+import { DumbbellIcon, PlayIcon, RepeatIcon, TimerIcon, TrendUpIcon } from './icons'
 import { useAuthStore } from '../store/authStore'
 import Navbar from './Navbar'
 import PageBackdrop from './PageBackdrop'
@@ -14,6 +14,7 @@ import LoadError from './LoadError'
 import PageHelp from './PageHelp'
 import { helpText } from '../lib/helpText'
 import Loading from './Loading'
+import Reveal from './Reveal'
 
 interface Named {
   _id: string
@@ -56,15 +57,29 @@ function daysSince(date: string) {
   return Math.round((today.getTime() - then.getTime()) / 86_400_000)
 }
 
-// The three dashboard tiles, built to motivate: this week, all time, and how long since the last one
+// The three dashboard tiles, built to motivate: this week, all time, and how long since the last
+// one. Each has its own tint, washing in from its top left corner, and a large faint icon in its
+// bottom right, so they're told apart at a glance: green for this week, sky for the total, amber
+// for the time since the last one.
 function statTiles(stats: SessionStats) {
   const days = stats.lastFinishedAt ? daysSince(stats.lastFinishedAt) : null
   return [
-    { value: String(stats.thisWeek), label: stats.thisWeek === 1 ? 'Workout this week' : 'Workouts this week' },
-    { value: String(stats.total), label: 'Workouts done' },
-    days === null ? { value: '–', label: 'No workouts yet' }
-      : days === 0 ? { value: 'Today', label: 'Last workout' }
-      : { value: `${days} ${days === 1 ? 'day' : 'days'}`, label: 'Since last workout' },
+    {
+      value: String(stats.thisWeek),
+      label: stats.thisWeek === 1 ? 'Workout this week' : 'Workouts this week',
+      tint: 'from-accent/14', iconColor: 'text-accent', Icon: TrendUpIcon,
+    },
+    {
+      value: String(stats.total),
+      label: 'Total workouts done',
+      tint: 'from-sky-400/14', iconColor: 'text-sky-400', Icon: DumbbellIcon,
+    },
+    {
+      ...(days === null ? { value: '–', label: 'No workouts yet' }
+        : days === 0 ? { value: 'Today', label: 'Last workout' }
+        : { value: `${days} ${days === 1 ? 'day' : 'days'}`, label: 'Since last workout' }),
+      tint: 'from-amber-400/14', iconColor: 'text-amber-400', Icon: TimerIcon,
+    },
   ]
 }
 
@@ -184,10 +199,10 @@ export default function Dashboard() {
       <main className="relative flex flex-col flex-1 max-w-3xl mx-auto w-full px-6 sm:px-10 pt-8 pb-16 sm:pt-16 gap-8">
 
         {/* -mb-2 takes the page's 32px gap down to the 24px the other pages have under their title */}
-        <div className="flex items-center gap-2 -mb-2">
+        <Reveal onLoad className="flex items-center gap-2 -mb-2">
           <h1 className={mainPageTitle}>Home</h1>
           <PageHelp {...helpText.home} />
-        </div>
+        </Reveal>
 
         {status === 'loading' && (
           <Loading>Loading your training…</Loading>
@@ -200,18 +215,21 @@ export default function Dashboard() {
         {status === 'ready' && (
           <>
             {activeSession && (
-              <div className={`${card} flex flex-wrap items-center justify-between gap-4`}>
+              <Reveal variant="pop" className={`${card} flex flex-wrap items-center justify-between gap-4`}>
                 <p className="min-w-0 text-sm text-zinc-400 wrap-break-word">{activeSession.workoutName} is in progress.</p>
                 <Link to={`/sessions/${activeSession._id}`} className={`inline-flex items-center gap-2 shrink-0 ${accentButton}`}>
                   <PlayIcon size={14} /> Resume workout
                 </Link>
-              </div>
+              </Reveal>
             )}
 
             {/* While a workout is running, the resume card above is the next thing to do */}
+            {/* Tinted like the tiles below, but in black: deep black at the top left fading to a
+                lighter gray at the bottom right, and the routine's repeat icon large and faint there */}
             {!activeSession && activeRoutine && nextWorkoutId && (
-              <div className={`${card} flex flex-col gap-3`}>
-                <div className="flex flex-wrap items-center justify-between gap-4">
+              <Reveal variant="pop" className={`${card} relative overflow-hidden flex flex-col gap-3 bg-linear-to-br from-black/85 via-black/35 to-white/6`}>
+                <RepeatIcon size={96} className="pointer-events-none absolute -right-4 -bottom-6 opacity-[0.06] text-white" />
+                <div className="relative flex flex-wrap items-center justify-between gap-4">
                   <div className="min-w-0 flex flex-col gap-1">
                     <h2 className={sectionHeading}>Next up</h2>
                     {/* Opens the workout's page, to see or change its exercises before starting */}
@@ -241,18 +259,25 @@ export default function Dashboard() {
                   </div>
                 </div>
                 {startError && (
-                  <p role="alert" className="text-xs text-red-500">{startError}</p>
+                  <p role="alert" className="relative text-xs text-red-500">{startError}</p>
                 )}
-              </div>
+              </Reveal>
             )}
 
             {stats && (
               <div className="grid grid-cols-3 gap-2">
-                {statTiles(stats).map((tile) => (
-                  <div key={tile.label} className={`${card} min-w-0 flex flex-col gap-1`}>
-                    <span className="text-2xl font-semibold tracking-tight tabular-nums whitespace-nowrap">{tile.value}</span>
-                    <span className="text-xs text-zinc-400">{tile.label}</span>
-                  </div>
+                {/* The tiles pop in one after another, left to right */}
+                {statTiles(stats).map(({ value, label, tint, iconColor, Icon }, index) => (
+                  <Reveal
+                    key={label}
+                    variant="pop"
+                    delay={80 + index * 70}
+                    className={`${card} relative overflow-hidden min-w-0 flex flex-col gap-1 bg-linear-to-br ${tint} via-transparent to-transparent`}
+                  >
+                    <Icon size={64} className={`pointer-events-none absolute -right-3 -bottom-3 opacity-[0.09] ${iconColor}`} />
+                    <span className="relative text-2xl font-semibold tracking-tight tabular-nums whitespace-nowrap">{value}</span>
+                    <span className="relative text-xs text-zinc-400">{label}</span>
+                  </Reveal>
                 ))}
               </div>
             )}

@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore'
 import Dashboard from '../components/Dashboard'
 import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
+import ScrollLifter from '../components/ScrollLifter'
 // The taller version of the photo, with the whole person and rack, for the full first screen
 import heroPhoto from '../assets/background-hero_bigger.webp'
 import { accentButton, bodyText, eyebrow, primaryButton, softPill } from '../lib/styles'
@@ -172,6 +173,8 @@ export default function HomePage() {
       <Navbar right={<Link to="/login" className="text-sm font-medium text-zinc-400 hover:text-zinc-50 transition-colors duration-200">Log in</Link>} />
       {/* The app's darkened photo, behind the sections below the hero */}
       <PageBackdrop />
+      {/* A little lifter in the corner who does a rep for every bit of scrolling */}
+      <ScrollLifter />
 
       {/* Hero: a full-screen photo, pulled up under the navbar (-mt-14, the navbar's height) so
           the photo shows through the navbar's see-through background too. It's placed with

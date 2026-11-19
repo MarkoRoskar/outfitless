@@ -5,6 +5,7 @@ import { authSubmitButton, inlineLink, inputClass, labelClass, pageTitle } from 
 import PasswordInput from '../components/PasswordInput'
 import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
+import Reveal from '../components/Reveal'
 import { isAxiosError } from 'axios'
 
 export default function ResetPasswordPage() {
@@ -51,13 +52,13 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-surface text-zinc-50">
-        <div className="text-center flex flex-col gap-3">
+        <Reveal onLoad className="text-center flex flex-col gap-3">
           <h1 className={pageTitle}>Invalid link</h1>
           <p className="text-sm text-zinc-400">This reset link is invalid or has expired.</p>
           <Link to="/forgot-password" className="text-sm font-medium text-zinc-50 hover:text-accent transition-colors duration-200">
             Request a new one
           </Link>
-        </div>
+        </Reveal>
       </div>
     )
   }
@@ -71,13 +72,14 @@ export default function ResetPasswordPage() {
       <main className="relative flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm flex flex-col gap-6">
 
-          <div className="flex flex-col gap-1.5">
+          {/* The heading, the form and the link come in one after another, like on Log in */}
+          <Reveal onLoad className="flex flex-col gap-1.5">
             <h1 className={pageTitle}>Reset password</h1>
             <p className="text-sm text-zinc-400">Enter your new password below.</p>
-          </div>
+          </Reveal>
 
-          <div>
-            <div className="bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
+          <Reveal onLoad variant="pop" delay={100}>
+            <div className="card-fade bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className={labelClass}>New password</label>
@@ -112,12 +114,14 @@ export default function ResetPasswordPage() {
                 </button>
               </form>
             </div>
-          </div>
+          </Reveal>
 
-          <p className="text-center text-sm text-zinc-400">
-            Remember your password?{' '}
-            <Link to="/login" className={inlineLink}>Log in</Link>
-          </p>
+          <Reveal onLoad delay={200}>
+            <p className="text-center text-sm text-zinc-400">
+              Remember your password?{' '}
+              <Link to="/login" className={inlineLink}>Log in</Link>
+            </p>
+          </Reveal>
 
         </div>
       </main>

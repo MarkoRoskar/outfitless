@@ -221,8 +221,15 @@ export default function Select(props: (SingleProps | MultipleProps) & {
       {open && (
         <div
           ref={popupRef}
-          style={position}
-          className="fixed z-50 flex flex-col p-1 rounded-xl border border-white/5 bg-zinc-900/95 backdrop-blur-xl shadow-lg"
+          // Grows from the edge next to the button, whichever side it opened on
+          style={{
+            ...position,
+            transformOrigin: position.bottom !== undefined ? 'bottom left' : 'top left',
+            '--popover-from': position.bottom !== undefined ? '4px' : '-4px',
+          } as CSSProperties}
+          // Near black with a faint edge, like the search box and filters it opens from. A little
+          // more solid than they are, so the list reads clearly over the cards under it.
+          className="popover-in fixed z-50 flex flex-col p-1 rounded-xl border border-white/8 bg-black/85 backdrop-blur-xl shadow-lg"
         >
           {searchable && (
             <div className="relative shrink-0 mb-1">

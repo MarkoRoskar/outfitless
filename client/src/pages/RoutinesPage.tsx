@@ -24,6 +24,9 @@ import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
 import Loading from '../components/Loading'
+import Reveal from '../components/Reveal'
+import Expand from '../components/Expand'
+import { listRevealDelay, useReveal } from '../lib/useReveal'
 
 // Routine as returned by the API. workouts holds workout IDs in the order they're done,
 // and the same ID can appear more than once.
@@ -261,12 +264,17 @@ function RoutineDialog({ routine, workouts, onClose, onSaved }: {
   )
 }
 
+// Whether a closed card's Follow button is green: on the followed routine, or on all of them
+// while none is followed. Open, it's always green.
+const followIsGreen = (active: boolean, anyFollowed: boolean) => active || !anyFollowed
+
 // One routine in the list, built like the cards on Exercises. Closed, it's two lines: the name
 // (with Active, and a note icon when it has one) and its workouts in one line, cut short with "…".
 // Tapping it anywhere opens labeled sections under thin lines: the numbered workouts, with Next,
 // and the note. Follow and ⋯ keep their own taps.
-function RoutineCard({ routine, workouts, anyFollowed, linkedTo = false, sortDisabled, handleOff, onToggleActive, onEdit, onDelete }: {
+function RoutineCard({ routine, index, workouts, anyFollowed, linkedTo = false, sortDisabled, handleOff, onToggleActive, onEdit, onDelete }: {
   routine: Routine
+  index: number
   workouts: Workout[]
   // Dragging is off while a new order is saving or while searching
   sortDisabled: boolean
@@ -284,6 +292,7 @@ function RoutineCard({ routine, workouts, anyFollowed, linkedTo = false, sortDis
   const [open, setOpen] = useState(linkedTo)
   const cardRef = useRef<HTMLLIElement | null>(null)
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: routine._id, disabled: sortDisabled })
+  const reveal = useReveal({ delay: listRevealDelay(index) })
   useEffect(() => {
     if (linkedTo) cardRef.current?.scrollIntoView({ block: 'center' })
   }, [linkedTo])
@@ -300,19 +309,21 @@ function RoutineCard({ routine, workouts, anyFollowed, linkedTo = false, sortDis
   const nextIndex = routine.active ? routine.nextIndex % routine.workouts.length : -1
   const names = routine.workouts.map((id) => workoutName(workouts, id))
 
-  // Light green, like the Next label, on the routine being followed. When none is followed, every
-  // Follow is green, inviting to pick one. The rest are a quiet gray. Its click doesn't toggle the card.
-  // Closed, it's a short "Follow" at the right of the summary. Open, it sits at the bottom left,
-  // says "Follow this routine" and is always green. The gray one has no background, so it's pulled right to line up.
+  // Outlined like the Finish workout button: green on the routine being followed, and on every
+  // routine when none is followed, inviting to pick one. The rest are outlined in quiet gray, so
+  // the followed one stands out. Its click doesn't toggle the card. Closed, it's at the right of
+  // the summary. Open, it's at the card's bottom left, says "Follow this routine" and is always
+  // green. Small either way, so it doesn't outweigh the card's text.
+  const green = (expanded: boolean) => expanded || followIsGreen(routine.active, anyFollowed)
   const followButton = (expanded: boolean) => (
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onToggleActive() }}
       aria-label={`${routine.active ? 'Unfollow' : 'Follow'} ${routine.name}`}
-      className={`shrink-0 h-7 px-3 rounded-full text-xs font-semibold transition-colors duration-200 ${
-        expanded || routine.active || !anyFollowed
-          ? 'text-accent-dim bg-accent-dim/12 hover:bg-accent-dim/20'
-          : `-mr-2 text-zinc-400 hover:bg-white/8 hover:text-zinc-50`
+      className={`shrink-0 h-8 px-3 rounded-xl border text-xs font-semibold transition-colors duration-200 active:scale-[0.98] ${
+        green(expanded)
+          ? 'border-accent/40 text-accent hover:bg-accent/10 hover:border-accent/60'
+          : 'border-white/12 text-zinc-400 hover:border-white/25 hover:text-zinc-50'
       }`}
     >
       {routine.active ? 'Unfollow' : 'Follow'}{expanded && ' this routine'}
@@ -321,13 +332,15 @@ function RoutineCard({ routine, workouts, anyFollowed, linkedTo = false, sortDis
 
   return (
     <li
-      ref={(node) => { cardRef.current = node; setNodeRef(node) }}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
+      ref={(node) => { cardRef.current = node; reveal.ref(node); setNodeRef(node) }}
+      data-variant={reveal['data-variant']}
+      onAnimationEnd={reveal.onAnimationEnd}
+      style={{ ...reveal.style, transform: CSS.Translate.toString(transform), transition }}
       onPointerDown={(e) => { pressedAt.current = { x: e.clientX, y: e.clientY } }}
       // A double tap would select the word under it, so a second quick press doesn't select
       onMouseDown={(e) => { if (e.detail > 1) e.preventDefault() }}
       onClick={handleCardClick}
-      className={`relative flex gap-3 p-4 rounded-2xl cursor-pointer bg-zinc-900/55 ring-1 ring-inset ring-white/4 hover:bg-zinc-800/45 transition-colors duration-200 ${isDragging ? 'z-20 shadow-lg bg-zinc-900!' : ''}`}
+      className={`${reveal.className} relative flex gap-3 card-fade p-4 rounded-2xl cursor-pointer bg-zinc-900/55 ring-1 ring-inset ring-white/4 hover:bg-zinc-800/45 transition-colors duration-200 ${isDragging ? 'z-20 shadow-lg bg-zinc-900!' : ''}`}
     >
       {/* The whole left strip drags, as on Workouts. Its click stays with it, so it doesn't open the card. */}
       <DragHandle
@@ -387,7 +400,7 @@ function RoutineCard({ routine, workouts, anyFollowed, linkedTo = false, sortDis
         </div>
       )}
 
-      {open && (
+      <Expand open={open}>
         <>
           <CardSection label="Workouts, in order">
             <ol className="flex flex-col gap-1">
@@ -414,7 +427,7 @@ function RoutineCard({ routine, workouts, anyFollowed, linkedTo = false, sortDis
           )}
           <div className="mt-3 flex">{followButton(true)}</div>
         </>
-      )}
+      </Expand>
       </div>
     </li>
   )
@@ -547,14 +560,14 @@ export default function RoutinesPage() {
 
       <main className="relative flex flex-col flex-1 max-w-3xl mx-auto w-full px-6 sm:px-10 pt-8 pb-16 sm:pt-16">
 
-        <div className="flex items-center gap-2 mb-6">
+        <Reveal onLoad className="flex items-center gap-2 mb-6">
           <h1 className={mainPageTitle}>Routines</h1>
           <PageHelp {...helpText.routines} />
-        </div>
+        </Reveal>
 
         {/* Searching and creating share the row right above the list, as on Workouts and Exercises */}
         {status === 'ready' && routines.length > 0 && (
-          <div className="flex items-center gap-3 mb-4">
+          <Reveal onLoad delay={60} className="flex items-center gap-3 mb-4">
             <div className="flex-1 min-w-0">
               <SearchField
                 label="Search routines by name"
@@ -565,7 +578,7 @@ export default function RoutinesPage() {
               />
             </div>
             <NewButton onClick={() => setEditing('new')} />
-          </div>
+          </Reveal>
         )}
 
         {status === 'ready' && routines.length > 0 && visibleRoutines.length === 0 && (
@@ -610,10 +623,11 @@ export default function RoutinesPage() {
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={visibleRoutines.slice(0, shownCount).map((routine) => routine._id)} strategy={verticalListSortingStrategy}>
               <ul className="flex flex-col gap-2">
-                {visibleRoutines.slice(0, shownCount).map((routine) => (
+                {visibleRoutines.slice(0, shownCount).map((routine, index) => (
                   <RoutineCard
                     key={routine._id}
                     routine={routine}
+                    index={index}
                     workouts={workouts}
                     anyFollowed={routines.some((r) => r.active)}
                     linkedTo={routine._id === linkedId}

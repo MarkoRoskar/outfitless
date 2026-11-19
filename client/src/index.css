@@ -116,27 +116,33 @@ body {
 
 /* Scroll reveal (components/Reveal.tsx): things fade in and rise into place when they come
    into view, one after another via --reveal-delay. "pop" also grows from slightly smaller.
-   The easing starts fast and settles gently, so it feels like a pop rather than a slide. */
-.reveal {
+   The easing starts fast and settles gently, so it feels like a pop rather than a slide.
+   It's a one-time animation rather than a transition, and Reveal adds .reveal-done when it
+   ends, which takes the animation off. So afterwards nothing of it is left on the element: it
+   doesn't take over the element's own transitions (like a card's hover color), its transform
+   (like a dragged card's), or replay when a reordered list moves the element. */
+.reveal:not(.is-visible) {
   opacity: 0;
-  transform: translateY(28px);
-  transition:
-    opacity 450ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-.reveal[data-variant='pop'] {
-  transform: translateY(16px) scale(0.9);
 }
 .reveal.is-visible {
-  opacity: 1;
-  transform: none;
+  animation: reveal-up 450ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms) backwards;
+}
+.reveal.is-visible[data-variant='pop'] {
+  animation-name: reveal-pop;
+}
+.reveal.reveal-done {
+  animation: none;
+}
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(28px); }
+}
+@keyframes reveal-pop {
+  from { opacity: 0; transform: translateY(16px) scale(0.9); }
 }
 /* "none" only marks when it's in view, for children with animations of their own */
 .reveal[data-variant='none'] {
   opacity: 1;
-  transform: none;
-  transition: none;
+  animation: none;
 }
 
 /* The homepage logo does a rep: it starts low and squashed under the load, presses up slowly
@@ -201,7 +207,8 @@ body {
 /* The homepage chart: each line draws itself from left to right, then its dots pop in as the line
    reaches them. They're keyframe animations, so a line drawn again (when the chosen exercises
    change) plays them again. pathLength="1" on the line makes a dash of length 1 cover all of it.
-   --draw-delay holds the drawing until the card has popped in. */
+   --draw-delay holds the drawing until the card has popped in. --draw-duration and --pop-duration
+   let the workout's chart play them faster. */
 @keyframes draw-line {
   from { stroke-dashoffset: 1; }
   to { stroke-dashoffset: 0; }
@@ -215,7 +222,7 @@ body {
   stroke-dashoffset: 1;
 }
 .is-visible .draw-line {
-  animation: draw-line 800ms cubic-bezier(0.65, 0, 0.35, 1) var(--draw-delay, 0ms) both;
+  animation: draw-line var(--draw-duration, 800ms) cubic-bezier(0.65, 0, 0.35, 1) var(--draw-delay, 0ms) both;
 }
 .pop-dot {
   opacity: 0;
@@ -223,7 +230,7 @@ body {
   transform-origin: center;
 }
 .is-visible .pop-dot {
-  animation: pop-dot 500ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--reveal-delay, 0ms) both;
+  animation: pop-dot var(--pop-duration, 500ms) cubic-bezier(0.34, 1.56, 0.64, 1) var(--reveal-delay, 0ms) both;
 }
 
 /* The homepage rest timer's last 3 seconds: each one pops bigger with a fit-green glow, then settles */
@@ -291,9 +298,310 @@ body {
 }
 
 /* For people who turn off animations in their system settings, everything is simply there */
+/* The navbar's dumbbell (Navbar.tsx): a handle behind the page's name with a pair of plates at
+   each end. The current page's is green. Hovering another page racks a gray one: the handle
+   spreads out from the middle and the plates slide on from the ends. Hovering the current page
+   lifts its dumbbell for one rep. */
+.nav-dumbbell {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 18px;
+  translate: 0 -50%;
+  color: var(--color-zinc-500);
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.nav-dumbbell-bar {
+  position: absolute;
+  inset-inline: 6px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.35;
+  scale: 0 1;
+  transition: scale 300ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+/* The big plate, with the small one outside it drawn by ::before */
+.nav-dumbbell-plate {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 1.5px;
+  background: currentColor;
+  transition: translate 300ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 60ms;
+}
+.nav-dumbbell-plate::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.nav-dumbbell-plate[data-side='left'] {
+  left: 3px;
+  translate: -6px 0;
+}
+.nav-dumbbell-plate[data-side='left']::before {
+  left: -3px;
+}
+.nav-dumbbell-plate[data-side='right'] {
+  right: 3px;
+  translate: 6px 0;
+}
+.nav-dumbbell-plate[data-side='right']::before {
+  right: -3px;
+}
+.group:hover .nav-dumbbell,
+.nav-dumbbell.is-active {
+  opacity: 1;
+}
+.group:hover .nav-dumbbell-bar,
+.nav-dumbbell.is-active .nav-dumbbell-bar {
+  scale: 1 1;
+}
+.group:hover .nav-dumbbell-plate,
+.nav-dumbbell.is-active .nav-dumbbell-plate {
+  translate: 0 0;
+}
+.nav-dumbbell.is-active {
+  color: var(--color-accent);
+}
+.group:hover .nav-dumbbell.is-active {
+  animation: dumbbell-lift 500ms ease-in-out;
+}
+@keyframes dumbbell-lift {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(-4px); }
+}
+
+/* A workout in progress (SessionPage.tsx). Ticking a set: the button squashes like a rep
+   under load and springs back, slightly past its size, as it turns green... */
+@keyframes set-tick {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.82); }
+  65% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.set-tick {
+  animation: set-tick 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* ...and the row behind it flashes a soft green */
+@keyframes set-row-flash {
+  0% { background-color: rgb(175 250 0 / 0.16); }
+  100% { background-color: rgb(175 250 0 / 0); }
+}
+.set-row-flash {
+  animation: set-row-flash 550ms ease-out;
+}
+/* The rest timer at 0:00: a green glow spreads from it and it gives a little shake, like a
+   nudge to get back under the bar. Then it stays at 0:00 until closed. */
+@keyframes rest-done {
+  0% { box-shadow: 0 0 0 0 rgb(175 250 0 / 0.55); transform: translateX(0); }
+  15% { transform: translateX(-5px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-3px); }
+  60% { transform: translateX(2px); }
+  75% { transform: translateX(0); }
+  100% { box-shadow: 0 0 0 12px rgb(175 250 0 / 0); }
+}
+.rest-done {
+  animation: rest-done 700ms ease-out;
+}
+
+/* An opening card's extra part (components/Expand.tsx): it grows from no height to its own
+   and fades in. Growing the grid row from 0fr to 1fr animates to the content's height, whatever
+   it is. */
+.expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease-out;
+}
+.expand.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+/* The same for <details> (the History cards, the progress table), where the browser can animate
+   them: it grows to its height and fades in. Elsewhere it opens at once, as before. */
+:root {
+  interpolate-size: allow-keywords;
+}
+details::details-content {
+  block-size: 0;
+  overflow: clip;
+  opacity: 0;
+  transition: block-size 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease-out, content-visibility 260ms allow-discrete;
+}
+details[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+
+/* The muscle group photos on an exercise card (components/MuscleGroupPhotos.tsx). They fade in
+   from the left, so the name beside them stays on plain card. Black and white and dark at rest;
+   hovering the card brings back some color and light. Each slice leans like a poster's cut, its
+   photo leaning back the other way so it stands straight, with a thin dark gap between slices. */
+.muscle-photos {
+  /* The widest the strip gets, so it stays clear of the name and groups on the left: a third of
+  a phone's card, a little more on a wider one */
+  --photos-max: 34%;
+  mask-image: linear-gradient(to right, transparent 0, black 40px);
+  filter: grayscale(1) brightness(0.55);
+  transition: filter 300ms ease-out;
+}
+@media (min-width: 40rem) {
+  .muscle-photos {
+    --photos-max: 38%;
+  }
+}
+/* group/card is for a card whose inside already uses group for something else, like History's */
+.group:hover .muscle-photos,
+.group\/card:hover .muscle-photos {
+  filter: grayscale(0.1) brightness(0.75);
+}
+/* Behind some of the card's text, they stay black and white, a little darker, even on hover */
+.muscle-photos.is-muted,
+.group:hover .muscle-photos.is-muted,
+.group\/card:hover .muscle-photos.is-muted {
+  filter: grayscale(1) brightness(0.4);
+}
+.muscle-photo-slice {
+  transform: skewX(-12deg);
+}
+.muscle-photo-slice + .muscle-photo-slice {
+  border-left: 2px solid rgb(9 9 11 / 0.9);
+}
+.muscle-photo-slice > div {
+  transform: skewX(12deg);
+}
+
+/* A personal record on the finish screen: the PR badge pops in once its card has landed,
+   overshooting with a fit-green ring that spreads and fades, and the "New best" line next to it
+   glows for a moment. --record-delay waits for the card. */
+@keyframes record-pop {
+  0% { opacity: 0; transform: scale(0.3); box-shadow: 0 0 0 0 rgb(175 250 0 / 0.7); }
+  55% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 0 4px rgb(175 250 0 / 0.45); }
+  100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 12px rgb(175 250 0 / 0); }
+}
+.record-pop {
+  display: inline-block;
+  animation: record-pop 700ms cubic-bezier(0.22, 1, 0.36, 1) var(--record-delay, 0ms) both;
+}
+@keyframes record-glow {
+  0%, 30% { text-shadow: 0 0 12px rgb(175 250 0 / 0.9); }
+  100% { text-shadow: 0 0 0 rgb(175 250 0 / 0); }
+}
+.record-glow {
+  animation: record-glow 1200ms ease-out var(--record-delay, 0ms) both;
+}
+
+/* Dialogs rise into place over a backdrop that fades in. Only while opening: they close by being
+   removed. The transform lasts only the animation, since while it's on, a dropdown inside (fixed
+   to the screen) would be placed relative to the dialog instead. */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes backdrop-in {
+  from { opacity: 0; }
+}
+dialog[open].modal-pop {
+  animation: modal-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+dialog[open].modal-pop::backdrop {
+  animation: backdrop-in 220ms ease-out;
+}
+
+/* Menus, dropdowns and the date picker grow from the corner they open from (the element's
+   transform-origin), nudging in from the button's side: --popover-from is -4px when they open
+   below it, 4px when above */
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(var(--popover-from, -4px)) scale(0.95); }
+  to { opacity: 1; transform: none; }
+}
+.popover-in {
+  animation: popover-in 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The homepage's scroll lifter (ScrollLifter.tsx): a new plate slides onto the bar, a full bar
+   trembles at the top of a rep, sweat flies off, and at the end the PR call pops and he hops */
+@keyframes lifter-plate {
+  from { opacity: 0; transform: scaleY(0.2); }
+}
+.lifter-plate {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lifter-plate 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes lifter-shake {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-0.6px) rotate(-1deg); }
+  75% { transform: translateY(0.6px) rotate(1deg); }
+}
+.lifter-shake {
+  transform-box: view-box;
+  transform-origin: center;
+  animation: lifter-shake 120ms linear infinite;
+}
+@keyframes lifter-sweat {
+  from { opacity: 1; transform: translate(0, 0); }
+  to { opacity: 0; transform: translate(7px, 12px); }
+}
+.lifter-sweat {
+  animation: lifter-sweat 600ms ease-in both;
+}
+.lifter-sweat-2 {
+  animation-name: lifter-sweat-left;
+  animation-delay: 120ms;
+}
+@keyframes lifter-sweat-left {
+  from { opacity: 1; transform: translate(0, 0); }
+  to { opacity: 0; transform: translate(-7px, 12px); }
+}
+@keyframes lifter-pr {
+  0% { transform: scale(0.4); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.lifter-pr {
+  animation: lifter-pr 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes lifter-hop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+.lifter-done {
+  animation: lifter-hop 700ms ease-in-out 2;
+}
+
+/* Every surface's background, from cards to search fields, fields, dialogs, menus, dropdowns
+   and chart tooltips: black at the top left fading to a slightly lighter gray at the bottom right,
+   over the surface's own gray, so everything has the same depth. In the components layer, so one
+   with its own background image (the home screen's tinted tiles, Next up) keeps it. */
+@layer components {
+  .card-fade {
+    background-image: linear-gradient(to bottom right, rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.15) 55%, rgb(255 255 255 / 0.04));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .reveal,
-  .reveal.is-visible,
+  /* Cards open and close at once */
+  .expand,
+  details::details-content {
+    transition: none;
+  }
+  /* Shown at once. Only these two, so a revealed card keeps its own transitions and transform. */
+  .reveal:not(.is-visible),
+  .reveal.is-visible {
+    opacity: 1;
+    animation: none;
+  }
   .rep-press,
   .is-visible .rep-press,
   .name-rise,
@@ -305,11 +613,23 @@ body {
   .is-visible .draw-line,
   .is-visible .pop-dot,
   .timer-pulse,
+  .set-tick,
+  .set-row-flash,
+  .rest-done,
   .next-time-chip,
   .land-pulse,
   .row-flash,
   .label-tap,
-  .trail-glow {
+  .trail-glow,
+  .nav-dumbbell,
+  .nav-dumbbell-bar,
+  .nav-dumbbell-plate,
+  .record-pop,
+  .record-glow,
+  dialog[open].modal-pop,
+  dialog[open].modal-pop::backdrop,
+  .popover-in,
+  .group:hover .nav-dumbbell.is-active {
     opacity: 1;
     transform: none;
     stroke-dashoffset: 0;

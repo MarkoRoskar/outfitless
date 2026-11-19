@@ -26,6 +26,10 @@ import LoadError from '../components/LoadError'
 import PageHelp from '../components/PageHelp'
 import { helpText } from '../lib/helpText'
 import Loading from '../components/Loading'
+import Reveal from '../components/Reveal'
+import Expand from '../components/Expand'
+import MuscleGroupPhotos from '../components/MuscleGroupPhotos'
+import { listRevealDelay, useReveal } from '../lib/useReveal'
 
 // Loaded separately, so the chart library only downloads once Progress is opened
 const WorkoutProgressChart = lazy(() => import('../components/WorkoutProgressChart'))
@@ -343,8 +347,9 @@ function WorkoutExerciseDialog({ workoutId, entry, exercises, onClose, onSaved }
 // One exercise card. Closed, it shows just what matters at a glance: the number and name, the
 // muscle groups and the current target, each cut short with "…" if too long. Tapping it anywhere,
 // like the cards on Exercises, opens the plan underneath. The grip and the buttons keep their own taps.
-function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, onRemove }: {
+function SortableEntry({ entry, index, position, name, muscleGroups, disabled, onEdit, onRemove }: {
   entry: WorkoutExercise
+  index: number
   position: number
   name: string
   muscleGroups: string[]
@@ -353,10 +358,37 @@ function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, 
   onRemove: () => void
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: entry._id, disabled })
+  const reveal = useReveal({ delay: listRevealDelay(index) })
   const [open, setOpen] = useState(false)
   // Where the pointer went down, to tell a tap from a drag across the text
   const pressedAt = useRef<{ x: number; y: number } | null>(null)
   const toggle = () => setOpen((current) => !current)
+
+  // How far down the muscle group photos reach: the whole closed card, and on an open card only
+  // down to the line above the plan, so its sentences are on plain card. On wider screens they
+  // also end before the Target tile, so it stays on plain card too. Measured as the card opens
+  // and closes and as the screen changes size, like on the Exercises page.
+  const cardRef = useRef<HTMLLIElement | null>(null)
+  const planRef = useRef<HTMLDivElement>(null)
+  const targetRef = useRef<HTMLDivElement>(null)
+  const [photosHeight, setPhotosHeight] = useState<number>()
+  const [photosRight, setPhotosRight] = useState<number>()
+  useEffect(() => {
+    const card = cardRef.current
+    if (!card) return
+    function measure() {
+      const cardBox = card!.getBoundingClientRect()
+      const line = planRef.current?.getBoundingClientRect()
+      setPhotosHeight(Math.min(cardBox.height, line ? line.top - cardBox.top : Infinity))
+      // The tile is hidden on phones, where it has no width, and the photos keep their usual end
+      const tile = targetRef.current?.getBoundingClientRect()
+      setPhotosRight(tile && tile.width > 0 ? cardBox.right - tile.left + 8 : undefined)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [])
 
   function handleCardClick(e: React.MouseEvent) {
     const start = pressedAt.current
@@ -368,8 +400,9 @@ function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, 
   const current = entry.noWeight ? `${entry.currentReps} reps` : `${entry.currentWeight} kg × ${entry.currentReps}`
   // The rules under the plan, each a short sentence with an icon. They match the server's
   // (nextCurrentNumbers in session.service.ts):
-  // - With weight and a range: the heaviest set with at least min reps becomes the target; over
-  //   max reps at that weight adds the increment, and no set reaching min reps takes it off
+  // - With weight and a range: the heaviest set with at least min reps becomes the target; reaching
+  //   max reps at that weight adds the increment, and a first set under min reps takes it off
+  //   (whatever the later sets did)
   // - Without weight: the target reps follow the best set, kept inside the range
   // - Max-rep sets: the targets never change by themselves, only when edited
   // One set has nothing to rest between.
@@ -378,8 +411,8 @@ function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, 
     entry.noWeight && !entry.amrap && { key: 'reps', icon: TrendUpIcon, text: <>Your best set becomes your target, up to {entry.maxReps} reps</> },
     entry.amrap && { key: 'max', icon: RepeatIcon, text: <>Your target stays the same until you edit it</> },
     weightRules && { key: 'best', icon: TrendUpIcon, text: <>Your heaviest set of {entry.minReps}+ reps becomes your target</> },
-    weightRules && { key: 'up', icon: TrendUpIcon, text: <><Num>+{entry.weightIncrement} kg</Num> when it goes over {entry.maxReps} reps</> },
-    weightRules && { key: 'down', icon: TrendDownIcon, text: <><Num>−{entry.weightIncrement} kg</Num> when no set reaches {entry.minReps} reps</> },
+    weightRules && { key: 'up', icon: TrendUpIcon, text: <><Num>+{entry.weightIncrement} kg</Num> when it reaches {entry.maxReps} reps</> },
+    weightRules && { key: 'down', icon: TrendDownIcon, text: <><Num>−{entry.weightIncrement} kg</Num> when your first set is under {entry.minReps} reps</> },
     entry.sets !== 1 && { key: 'rest', icon: TimerIcon, text: <><Num>{entry.restTime} s</Num> rest between sets</> },
   ].filter((detail) => detail !== false)
   // Clicks on these stay with them, so dragging or using the menu doesn't also open or close the card
@@ -387,15 +420,20 @@ function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, 
 
   return (
     <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
+      ref={(node) => { reveal.ref(node); setNodeRef(node); cardRef.current = node }}
+      data-variant={reveal['data-variant']}
+      onAnimationEnd={reveal.onAnimationEnd}
+      style={{ ...reveal.style, transform: CSS.Translate.toString(transform), transition }}
       onPointerDown={(e) => { pressedAt.current = { x: e.clientX, y: e.clientY } }}
       // A double tap would select the word under it, so a second quick press doesn't select
       onMouseDown={(e) => { if (e.detail > 1) e.preventDefault() }}
       onClick={handleCardClick}
-      className={`p-4 rounded-2xl cursor-pointer bg-zinc-900/55 ring-1 ring-inset ring-white/4 hover:bg-zinc-800/45 transition-colors duration-200 ${isDragging ? 'relative z-10 shadow-lg bg-zinc-900!' : ''}`}
+      className={`${reveal.className} group relative card-fade p-4 rounded-2xl cursor-pointer bg-zinc-900/55 ring-1 ring-inset ring-white/4 hover:bg-zinc-800/45 transition-colors duration-200 ${isDragging ? 'z-10 shadow-lg bg-zinc-900!' : ''}`}
     >
-      <div className="flex items-center gap-3">
+      {/* The same muscle group photos as on the Exercises page */}
+      <MuscleGroupPhotos groups={muscleGroups} height={photosHeight} right={photosRight} />
+      {/* relative, so the card's content is drawn above the photos */}
+      <div className="relative flex items-center gap-3">
         <DragHandle ref={setActivatorNodeRef} {...attributes} {...listeners} onClick={keepClick} aria-label={`Reorder ${name}`} />
 
         <div className="min-w-0 flex-1 flex flex-col gap-1">
@@ -417,7 +455,7 @@ function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, 
         </div>
 
         {/* Wider screens have room for it as a tile. The lighter green, so it doesn't outshine the Start card. */}
-        <div className="hidden sm:flex shrink-0 flex-col gap-0.5 px-3 py-2 rounded-xl bg-accent-dim/8">
+        <div ref={targetRef} className="hidden sm:flex shrink-0 flex-col gap-0.5 px-3 py-2 rounded-xl bg-accent-dim/8">
           <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Target</span>
           <span className="text-sm font-semibold tabular-nums text-accent-dim">{current}</span>
         </div>
@@ -444,9 +482,9 @@ function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, 
 
       {/* Labeled sections under thin lines, like an open exercise card: the rules of the plan, then the
           muscle groups. The lines run the full width, and the text lines up with the name after the grip. */}
-      {open && (
-        <>
-          <div className="mt-3 pt-1 pl-6 flex flex-col gap-1.5 border-t border-white/8">
+      <Expand open={open}>
+        <div className="relative">
+          <div ref={planRef} className="mt-3 pt-1 pl-6 flex flex-col gap-1.5 border-t border-white/8">
             <p className={sectionHeading}>Plan</p>
             <ul className="flex flex-col gap-1.5">
               {details.map(({ key, icon: Icon, text }) => (
@@ -463,8 +501,8 @@ function SortableEntry({ entry, position, name, muscleGroups, disabled, onEdit, 
               <p className="text-sm leading-relaxed text-zinc-200 wrap-break-word">{groups}</p>
             </div>
           )}
-        </>
-      )}
+        </div>
+      </Expand>
     </li>
   )
 }
@@ -498,15 +536,16 @@ function StartCard({ label, summary, to, onClick, busy = false, error }: {
     </>
   )
   const className = 'group w-full flex items-center gap-3.5 p-3.5 pr-4 rounded-2xl border border-accent/35 bg-linear-to-b from-accent/14 to-accent/7 hover:border-accent/60 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200'
+  // It pops in just after the title, as the main thing to do on the page
   return (
-    <div className="flex flex-col gap-2">
+    <Reveal onLoad variant="pop" delay={80} className="flex flex-col gap-2">
       {to ? (
         <Link to={to} className={className}>{inner}</Link>
       ) : (
         <button type="button" onClick={onClick} disabled={busy} className={className}>{inner}</button>
       )}
       {error && <p role="alert" className="text-xs text-red-500">{error}</p>}
-    </div>
+    </Reveal>
   )
 }
 
@@ -665,7 +704,7 @@ export default function WorkoutDetailPage() {
 
         {status === 'ready' && workout && (
           <>
-            <div className="min-w-0 flex flex-col gap-2">
+            <Reveal onLoad className="min-w-0 flex flex-col gap-2">
               <BackLink to="/workouts">Workouts</BackLink>
               {/* The ⓘ stays at the top right of a long name that wraps */}
               <div className="flex items-start gap-2">
@@ -685,7 +724,7 @@ export default function WorkoutDetailPage() {
                 <TimerIcon size={16} className="shrink-0 mt-0.5 text-zinc-400" />
                 {workout.restBetweenExercises} s rest between exercises
               </p>
-            </div>
+            </Reveal>
 
             {/* Resume this workout, or start it when nothing else is in progress */}
             {entries.length > 0 && (!activeSession || activeSession.workoutId === workout._id) && (
@@ -733,11 +772,11 @@ export default function WorkoutDetailPage() {
 
             {/* Adding sits right above the list, where + New is on the other pages */}
             {entries.length > 0 && exercises.length > 0 && (
-              <div className="-mb-2 flex items-center justify-between gap-3">
+              <Reveal className="-mb-2 flex items-center justify-between gap-3">
                 <h2 className={pageSectionHeading}>Exercises</h2>
                 {/* The same + New as on Exercises, Workouts and Routines. The heading beside it says what it adds. */}
                 <NewButton onClick={() => setEditing('new')} />
-              </div>
+              </Reveal>
             )}
 
             {entries.length > 0 && (
@@ -748,6 +787,7 @@ export default function WorkoutDetailPage() {
                       <SortableEntry
                         key={entry._id}
                         entry={entry}
+                        index={index}
                         position={index + 1}
                         name={exerciseName(entry)}
                         muscleGroups={exercises.find((exercise) => exercise._id === entry.exerciseId)?.muscleGroups ?? []}
@@ -761,7 +801,11 @@ export default function WorkoutDetailPage() {
               </DndContext>
             )}
 
-            {entries.length > 0 && <ProgressSection workoutId={workout._id} />}
+            {entries.length > 0 && (
+              <Reveal>
+                <ProgressSection workoutId={workout._id} />
+              </Reveal>
+            )}
 
           </>
         )}

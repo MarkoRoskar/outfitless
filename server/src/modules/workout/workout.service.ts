@@ -25,23 +25,29 @@ export const create = async (
 };
 
 // Workouts without an order sort first, newest to oldest, so a new workout starts at the top.
-// Each comes with its exercises' names in order, so the list can show what a workout contains.
+// Each comes with its exercises' names in order, so the list can show what a workout contains,
+// and every muscle group they work, each once, in the order the exercises first use them (for
+// the card's photos).
 export const getAll = async (userId: string) => {
   const workouts = await Workout.find({ owner: userId }).sort({ order: 1, createdAt: -1 }).lean();
 
   // One query for every workout's exercises, rather than one per workout
   const entries = await WorkoutExercise.find({ owner: userId, workoutId: { $in: workouts.map((workout) => workout._id) } })
     .sort({ order: 1, createdAt: 1 })
-    .populate<{ exerciseId: { name: string } | null }>("exerciseId", "name")
+    .populate<{ exerciseId: { name: string; muscleGroups?: string[] } | null }>("exerciseId", "name muscleGroups")
     .lean();
 
-  return workouts.map((workout) => ({
-    ...workout,
+  return workouts.map((workout) => {
     // An exercise deleted from the library leaves nothing to name, so it's skipped
-    exerciseNames: entries
+    const exercises = entries
       .filter((entry) => entry.workoutId.equals(workout._id))
-      .flatMap((entry) => (entry.exerciseId ? [entry.exerciseId.name] : [])),
-  }));
+      .flatMap((entry) => (entry.exerciseId ? [entry.exerciseId] : []));
+    return {
+      ...workout,
+      exerciseNames: exercises.map((exercise) => exercise.name),
+      muscleGroups: [...new Set(exercises.flatMap((exercise) => exercise.muscleGroups ?? []))],
+    };
+  });
 };
 
 export const reorder = async (userId: string, ids: string[]) => {

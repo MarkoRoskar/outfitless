@@ -14,11 +14,14 @@ import { User } from "../auth/auth.model";
 // (always for max-rep sets).
 // Current reps always stays inside the range.
 //
-// With weight, the new target comes from the heaviest set that reached minReps, so a heavier
-// set anywhere in the session counts (20, 20, 21 kg × 8 makes 21 kg the target). Then:
-// - a set at that weight above maxReps adds the increment
-// - when no set reached minReps and the first set was under it, the increment comes off
-//   the first set's weight
+// With weight, a first set under minReps decides: the increment comes off its weight, at maxReps,
+// whatever the later sets did (10 kg × 6, then 8 kg × 8 still gives 10 − increment).
+// Otherwise the new target comes from the heaviest set that reached minReps, so a heavier set
+// anywhere in the session counts (20, 20, 21 kg × 8 makes 21 kg the target), and a set at that
+// weight reaching maxReps adds the increment.
+// To 2 decimals, so a decimal increment can't leave float noise like 3.3000000000000003 kg
+const roundWeight = (weight: number) => Math.round(weight * 100) / 100;
+
 export const nextCurrentNumbers = (exercise: ProgressionInput) => {
   // Max-rep sets have no range to progress through, so their targets only change when edited
   if (exercise.amrap) return null;
@@ -42,20 +45,22 @@ export const nextCurrentNumbers = (exercise: ProgressionInput) => {
   }
 
   const weightOf = (set: { weight?: number | null }) => set.weight ?? 0;
-  const reached = logged.filter((set) => set.reps >= minReps);
 
+  // A first set under minReps decides on its own, so a lighter later set can't become the target
+  if (first?.done && first.reps < minReps) {
+    return { currentReps: maxReps, currentWeight: roundWeight(Math.max(weightOf(first) - increment, 0)) };
+  }
+
+  const reached = logged.filter((set) => set.reps >= minReps);
   if (reached.length === 0) {
-    const firstWeight = weightOf(logged[0]);
-    return first?.done && first.reps < minReps
-      ? { currentReps: maxReps, currentWeight: Math.max(firstWeight - increment, 0) }
-      : { currentReps: minReps, currentWeight: firstWeight };
+    return { currentReps: minReps, currentWeight: weightOf(logged[0]) };
   }
 
   const heaviest = Math.max(...reached.map(weightOf));
   const repsAtHeaviest = Math.max(...reached.filter((set) => weightOf(set) === heaviest).map((set) => set.reps));
 
-  if (repsAtHeaviest > maxReps) {
-    return { currentReps: minReps, currentWeight: heaviest + increment };
+  if (repsAtHeaviest >= maxReps) {
+    return { currentReps: minReps, currentWeight: roundWeight(heaviest + increment) };
   }
   return { currentReps: repsAtHeaviest, currentWeight: heaviest };
 };
@@ -365,18 +370,20 @@ type SessionDocument = InstanceType<typeof Session>;
 
 // Sessions as sent to the browser, with each exercise's and the workout's current name in place
 // of the name saved when the session started, so renaming one shows everywhere, History included.
-// A deleted exercise or workout keeps the saved name. Only what's sent changes: the stored
-// sessions keep their saved names, and their sets and plans stay as they were done.
+// A deleted exercise or workout keeps the saved name. Each exercise also gets its current muscle
+// groups (none if it was deleted), for the photos on History's cards. Only what's sent changes:
+// the stored sessions keep their saved names, and their sets and plans stay as they were done.
 export const withCurrentNames = async (sessions: SessionDocument[], userId: string) => {
   const plain = sessions.map((session) => session.toObject());
   const exerciseIds = [...new Set(plain.flatMap((session) => session.exercises.map((exercise) => exercise.exerciseId.toString())))];
   const workoutIds = [...new Set(plain.map((session) => session.workoutId.toString()))];
 
   const [exercises, workouts] = await Promise.all([
-    Exercise.find({ _id: { $in: exerciseIds }, owner: userId }).select("name").lean(),
+    Exercise.find({ _id: { $in: exerciseIds }, owner: userId }).select("name muscleGroups").lean(),
     Workout.find({ _id: { $in: workoutIds }, owner: userId }).select("name").lean(),
   ]);
   const exerciseNames = new Map(exercises.map((exercise) => [exercise._id.toString(), exercise.name]));
+  const exerciseGroups = new Map(exercises.map((exercise) => [exercise._id.toString(), exercise.muscleGroups ?? []]));
   const workoutNames = new Map(workouts.map((workout) => [workout._id.toString(), workout.name]));
 
   return plain.map((session) => ({
@@ -385,6 +392,7 @@ export const withCurrentNames = async (sessions: SessionDocument[], userId: stri
     exercises: session.exercises.map((exercise) => ({
       ...exercise,
       name: exerciseNames.get(exercise.exerciseId.toString()) ?? exercise.name,
+      muscleGroups: exerciseGroups.get(exercise.exerciseId.toString()) ?? [],
     })),
   }));
 };
@@ -394,11 +402,51 @@ export const withCurrentName = async (session: SessionDocument | null, userId: s
   session ? (await withCurrentNames([session], userId))[0] : null;
 
 // Personal records: for each exercise in the given sessions, recordSetIndex is the set that beat
-// everything logged for that exercise before it, by weight, or by reps for no-weight exercises.
-// Only the session's best set is marked, and an exercise's very first session doesn't count,
-// since there's nothing to beat yet. Worked out from all the user's finished sessions, so it's
-// right however History is paged or filtered.
+// everything logged for that exercise before it. With weight, a heavier set wins, and at the same
+// weight more reps win (80 kg × 11 beats 80 kg × 10); without weight, the most reps win. Only the
+// session's best set is marked, and an exercise's very first session doesn't count, since there's
+// nothing to beat yet. Worked out from all the user's finished sessions, so it's right however
+// History is paged or filtered.
 type NamedSession = Awaited<ReturnType<typeof withCurrentNames>>[number];
+
+interface RecordHistorySession {
+  _id: { toString(): string };
+  exercises: {
+    exerciseId: { toString(): string };
+    noWeight?: boolean | null;
+    loggedSets: { reps: number; weight?: number | null; done: boolean }[];
+  }[];
+}
+
+// A set's score, compared heaviest first, then most reps
+type Score = [number, number];
+const beats = (a: Score, b: Score) => a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]);
+
+// "<session id>:<exercise index>" -> the record set's index, from sessions sorted oldest first
+export const findRecords = (history: RecordHistorySession[], exerciseIds: string[]) => {
+  const records = new Map<string, number>();
+  const bestSoFar = new Map<string, Score>();
+  for (const past of history) {
+    past.exercises.forEach((exercise, exerciseIndex) => {
+      const id = exercise.exerciseId.toString();
+      if (!exerciseIds.includes(id)) return;
+      const score = (set: { reps: number; weight?: number | null }): Score =>
+        exercise.noWeight ? [set.reps, 0] : [set.weight ?? 0, set.reps];
+      const done = exercise.loggedSets
+        .map((set, setIndex) => ({ set, setIndex, score: score(set) }))
+        .filter(({ set }) => set.done && set.reps > 0);
+      if (done.length === 0) return;
+
+      const best = done.reduce((top, item) => (beats(item.score, top.score) ? item : top));
+      const previous = bestSoFar.get(id);
+      if (previous !== undefined && beats(best.score, previous)) {
+        records.set(`${past._id.toString()}:${exerciseIndex}`, best.setIndex);
+      }
+      if (previous === undefined || beats(best.score, previous)) bestSoFar.set(id, best.score);
+    });
+  }
+  return records;
+};
 
 export const withRecords = async (sessions: NamedSession[], userId: string) => {
   const exerciseIds = [...new Set(sessions.flatMap((session) => session.exercises.map((exercise) => exercise.exerciseId.toString())))];
@@ -413,27 +461,7 @@ export const withRecords = async (sessions: NamedSession[], userId: string) => {
     .select("finishedAt exercises.exerciseId exercises.noWeight exercises.loggedSets")
     .lean();
 
-  // "<session id>:<exercise index>" -> the record set's index
-  const records = new Map<string, number>();
-  const bestSoFar = new Map<string, number>();
-  for (const past of history) {
-    past.exercises.forEach((exercise, exerciseIndex) => {
-      const id = exercise.exerciseId.toString();
-      if (!exerciseIds.includes(id)) return;
-      const measure = (set: { reps: number; weight?: number | null }) => (exercise.noWeight ? set.reps : set.weight ?? 0);
-      const done = exercise.loggedSets
-        .map((set, setIndex) => ({ set, setIndex }))
-        .filter(({ set }) => set.done && set.reps > 0);
-      if (done.length === 0) return;
-
-      const best = done.reduce((top, item) => (measure(item.set) > measure(top.set) ? item : top));
-      const previous = bestSoFar.get(id);
-      if (previous !== undefined && measure(best.set) > previous) {
-        records.set(`${past._id.toString()}:${exerciseIndex}`, best.setIndex);
-      }
-      bestSoFar.set(id, Math.max(previous ?? -Infinity, measure(best.set)));
-    });
-  }
+  const records = findRecords(history, exerciseIds);
 
   return sessions.map((session) => ({
     ...session,

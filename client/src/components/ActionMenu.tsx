@@ -83,7 +83,7 @@ export default function ActionMenu({ itemName, actions }: { itemName: string; ac
           id={menuId}
           role="menu"
           aria-label={`Actions for ${itemName}`}
-          className="absolute right-0 top-full mt-1 min-w-36 p-1 rounded-xl border border-white/5 bg-zinc-900/80 backdrop-blur-xl shadow-lg"
+          className="popover-in card-fade origin-top-right absolute right-0 top-full mt-1 min-w-36 p-1 rounded-xl border border-white/5 bg-zinc-900/80 backdrop-blur-xl shadow-lg"
         >
           {actions.map((action) => (
             <button
