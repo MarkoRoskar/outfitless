@@ -60,7 +60,15 @@ if (production) {
   // every page address (like /workouts/123) so the app's own router can show the right page.
   // client/dist is two folders up from server/dist.
   const clientBuild = path.resolve(__dirname, "../../client/dist");
-  app.use(express.static(clientBuild, { index: false, maxAge: "1h" }));
+  app.use(express.static(clientBuild, {
+    index: false,
+    maxAge: "1h",
+    // The service worker (sw.js) and its manifest of files must always be fresh, or phones keep
+    // running an old version: browsers check them for updates each time the app opens
+    setHeaders: (res, filePath) => {
+      if (["sw.js", "site.webmanifest"].includes(path.basename(filePath))) res.setHeader("Cache-Control", "no-cache");
+    },
+  }));
   app.get(/.*/, (_req, res) => {
     res.sendFile(path.join(clientBuild, "index.html"));
   });

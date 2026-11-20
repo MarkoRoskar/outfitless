@@ -17,6 +17,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import SettingsPage from './pages/SettingsPage'
 import PrivacyPage from './pages/PrivacyPage'
 import AboutPage from './pages/AboutPage'
+import UpdatePrompt from './components/UpdatePrompt'
 
 function App() {
   // "Remember my choice" in a delete dialog only lasts while you stay on that page
@@ -24,6 +25,7 @@ function App() {
   useEffect(() => forgetDeleteChoice(), [pathname])
 
   return (
+    <>
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -43,6 +45,9 @@ function App() {
       {/* Any other address, like an old or mistyped link */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    {/* Says when a new version is ready, on every page */}
+    <UpdatePrompt />
+    </>
   )
 }
 
