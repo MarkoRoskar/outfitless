@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { forgetDeleteChoice } from './lib/deletePrompt'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -16,6 +18,10 @@ import SettingsPage from './pages/SettingsPage'
 import PrivacyPage from './pages/PrivacyPage'
 
 function App() {
+  // "Remember my choice" in a delete dialog only lasts while you stay on that page
+  const { pathname } = useLocation()
+  useEffect(() => forgetDeleteChoice(), [pathname])
+
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />

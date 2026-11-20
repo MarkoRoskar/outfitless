@@ -17,7 +17,6 @@ import PasswordInput from '../components/PasswordInput'
 import Loading from '../components/Loading'
 import Reveal from '../components/Reveal'
 import { useFormErrors } from '../lib/useFormErrors'
-import { asksBeforeDeleting, setAsksBeforeDeleting } from '../lib/deletePrompt'
 
 interface Account {
   email: string
@@ -262,25 +261,6 @@ function Section({ title, delay, tint, children }: { title: string; delay: numbe
   )
 }
 
-// Whether deleting an exercise, workout, routine or past workout asks first. Turned off by
-// "Remember my choice" in the delete dialog, and back on here. Saved on this device.
-function DeletePromptSetting() {
-  const [ask, setAsk] = useState(asksBeforeDeleting)
-  return (
-    <>
-      <Checkbox checked={ask} onChange={(next) => { setAsksBeforeDeleting(next); setAsk(next) }}>
-        Ask before deleting
-      </Checkbox>
-      <p className="text-xs text-zinc-400">
-        {ask
-          ? 'Deleting an exercise, workout, routine or past workout asks you first.'
-          : "Deleting happens straight away. You're only asked when something blocks it."}{' '}
-        Discarding a workout in progress always asks. Saved on this device.
-      </p>
-    </>
-  )
-}
-
 // The logged-in user's account: changing the password, the sounds and deleting the account. The
 // email is still loaded, since the password dialog sends its reset link there.
 export default function SettingsPage() {
@@ -348,11 +328,7 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-zinc-400">Saved on this device.</p>
             </Section>
 
-            <Section title="Deleting" delay={160} tint="from-violet-400/14">
-              <DeletePromptSetting />
-            </Section>
-
-            <Section title="Delete account" delay={210} tint="from-red-500/14">
+            <Section title="Delete account" delay={160} tint="from-red-500/14">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="min-w-0 text-sm text-zinc-400">Permanently delete your account and everything in it.</p>
                 <button

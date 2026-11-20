@@ -7,12 +7,12 @@ import { ChevronRightIcon } from './icons'
 import { useAuthStore } from '../store/authStore'
 import Modal from './Modal'
 import Checkbox from './Checkbox'
-import { asksBeforeDeleting, setAsksBeforeDeleting } from '../lib/deletePrompt'
+import { asksBeforeDeleting, stopAskingOnThisPage } from '../lib/deletePrompt'
 
 // Asks for confirmation, then sends DELETE to the given API path.
 //
-// Ticking "Remember my choice" stops the asking on this device (lib/deletePrompt.ts; Settings
-// turns it back on). After that the delete happens straight away, with nothing on screen, and
+// Ticking "Remember my choice" stops the asking while you stay on this page (lib/deletePrompt.ts):
+// going to another page or reloading asks again. Until then a delete happens straight away, with nothing on screen, and
 // the dialog only shows when the delete is blocked, like an exercise a workout still uses, so
 // it can say why. rememberable={false} always asks, for losing something there's no getting
 // back by mistake, like the sets of a workout in progress.
@@ -104,7 +104,7 @@ export default function ConfirmDeleteDialog({ title, message, path, onClose, onD
 
         {/* Not after a blocked delete without asking: there's nothing to remember then */}
         {rememberable && !skipAsking && (
-          <Checkbox checked={remember} onChange={setRemember}>Remember my choice and don't ask again</Checkbox>
+          <Checkbox checked={remember} onChange={setRemember}>Remember my choice while I'm on this page</Checkbox>
         )}
 
         <div className="flex justify-end gap-2 mt-1">
@@ -112,7 +112,7 @@ export default function ConfirmDeleteDialog({ title, message, path, onClose, onD
           <button
             type="button"
             onClick={() => {
-              if (remember) setAsksBeforeDeleting(false)
+              if (remember) stopAskingOnThisPage()
               handleDelete()
             }}
             disabled={deleting}

@@ -1,21 +1,24 @@
-// Whether deleting something asks first, as chosen with "Remember my choice" in the delete
-// dialog or in Settings. Saved on this device. Storage can be blocked, like in some private
-// windows: then it always asks, the safe default.
-const KEY = 'askBeforeDeleting'
+// Whether deleting something asks first. "Remember my choice" in the delete dialog stops the
+// asking only while you stay on that page: App forgets it whenever the page changes, and a reload
+// starts asking again too, since it's only kept in memory. So several things can be deleted in a
+// row, without the app staying in "never ask" mode.
+let askOnThisPage = true
 
 export function asksBeforeDeleting() {
-  try {
-    return localStorage.getItem(KEY) !== 'false'
-  } catch {
-    return true
-  }
+  return askOnThisPage
 }
 
-export function setAsksBeforeDeleting(ask: boolean) {
-  try {
-    if (ask) localStorage.removeItem(KEY)
-    else localStorage.setItem(KEY, 'false')
-  } catch {
-    // Not saved, so it keeps asking
-  }
+export function stopAskingOnThisPage() {
+  askOnThisPage = false
+}
+
+export function forgetDeleteChoice() {
+  askOnThisPage = true
+}
+
+// An earlier version kept the choice for good on this device; that saved choice no longer applies
+try {
+  localStorage.removeItem('askBeforeDeleting')
+} catch {
+  // Storage blocked, so there's nothing saved either
 }
