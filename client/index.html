@@ -5,10 +5,12 @@
     <!-- The logo as the tab and search result icon. Google wants a square PNG in a multiple of
          48px; the SVG is for browsers that take one, favicon.ico for those that ask by name. -->
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=4" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" />
+    <!-- The ?v= number makes browsers fetch the manifest afresh instead of a copy they kept from
+         before. Raise it, here and on the icons in the manifest, whenever the icons or the manifest change. -->
+    <link rel="manifest" href="/site.webmanifest?v=4" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>outFITless: the workout tracker that raises your weights</title>
     <!-- For search engines and link previews. The site's address is in each URL below; change them
