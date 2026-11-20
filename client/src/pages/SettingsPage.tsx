@@ -17,6 +17,7 @@ import PasswordInput from '../components/PasswordInput'
 import Loading from '../components/Loading'
 import Reveal from '../components/Reveal'
 import { useFormErrors } from '../lib/useFormErrors'
+import { isAppleMobile, isInstalled, useInstallPrompt } from '../lib/installApp'
 
 interface Account {
   email: string
@@ -261,6 +262,67 @@ function Section({ title, delay, tint, children }: { title: string; delay: numbe
   )
 }
 
+// Puts outFITless on the home screen, or in a computer's apps, from here instead of the browser's
+// menu. Where the browser allows it (Chrome, Edge, Android) the button opens the browser's own
+// install box; on iPhone it shows the Share → Add to Home Screen steps, since Safari has no box.
+// Elsewhere it says where the browser keeps the option. Opened as the installed app, it says so.
+function InstallAppSetting() {
+  const { canPrompt, install } = useInstallPrompt()
+  const [installed, setInstalled] = useState(isInstalled)
+  const [showSteps, setShowSteps] = useState(false)
+  const apple = isAppleMobile()
+
+  if (installed) {
+    return <p className="text-sm text-zinc-400">You're using the installed app.</p>
+  }
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0 text-sm text-zinc-400">
+          Add outFITless to your home screen. It opens full screen, like an app.
+        </p>
+        {(canPrompt || apple) && (
+          <button
+            onClick={async () => {
+              if (canPrompt) setInstalled(await install())
+              else setShowSteps(true)
+            }}
+            className={secondaryButton}
+          >
+            {canPrompt ? 'Install app' : 'Add to Home Screen'}
+          </button>
+        )}
+      </div>
+      {!canPrompt && !apple && (
+        <p className="text-xs text-zinc-400">
+          In your browser's menu, choose <span className="text-zinc-200">Install app</span> or{' '}
+          <span className="text-zinc-200">Add to Home screen</span>.
+        </p>
+      )}
+      {showSteps && (
+        <Modal title="Add to Home Screen" busy={false} onClose={() => setShowSteps(false)} closeOnOutsideClick>
+          <ol className="flex flex-col gap-3 text-sm text-zinc-300">
+            {[
+              <>Open this page in <span className="text-zinc-50 font-medium">Safari</span>.</>,
+              <>Tap the <span className="text-zinc-50 font-medium">Share</span> button, the square with an arrow pointing up.</>,
+              <>Scroll down and tap <span className="text-zinc-50 font-medium">Add to Home Screen</span>.</>,
+              <>Tap <span className="text-zinc-50 font-medium">Add</span>. outFITless is now on your home screen.</>,
+            ].map((step, index) => (
+              <li key={index} className="flex items-baseline gap-3">
+                <span className="shrink-0 text-xs font-mono font-bold text-accent-dim">{index + 1}</span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="flex justify-end mt-5">
+            <button onClick={() => setShowSteps(false)} className={secondaryButton}>Got it</button>
+          </div>
+        </Modal>
+      )}
+    </>
+  )
+}
+
 // The logged-in user's account: changing the password, the sounds and deleting the account. The
 // email is still loaded, since the password dialog sends its reset link there.
 export default function SettingsPage() {
@@ -328,7 +390,11 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-zinc-400">Saved on this device.</p>
             </Section>
 
-            <Section title="Delete account" delay={160} tint="from-red-500/14">
+            <Section title="App" delay={160} tint="from-emerald-400/14">
+              <InstallAppSetting />
+            </Section>
+
+            <Section title="Delete account" delay={210} tint="from-red-500/14">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="min-w-0 text-sm text-zinc-400">Permanently delete your account and everything in it.</p>
                 <button
