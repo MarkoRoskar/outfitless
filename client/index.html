@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- The logo as the tab and search result icon. Google wants a square PNG in a multiple of
+         48px; the SVG is for browsers that take one, favicon.ico for those that ask by name. -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>outFITless: the workout tracker that raises your weights</title>
     <!-- For search engines and link previews. The site's address is in each URL below; change them
@@ -32,12 +38,14 @@
             "@type": "WebSite",
             "name": "outFITless",
             "alternateName": "outfitless",
-            "url": "https://outfitless.onrender.com/"
+            "url": "https://outfitless.onrender.com/",
+            "image": "https://outfitless.onrender.com/icon-512.png"
           },
           {
             "@type": "WebApplication",
             "name": "outFITless",
             "url": "https://outfitless.onrender.com/",
+            "image": "https://outfitless.onrender.com/icon-512.png",
             "applicationCategory": "HealthApplication",
             "operatingSystem": "Any",
             "description": "A free workout tracker that logs every set and plans your next workout, raising the weight when you reach the top of your rep range.",
