@@ -32,14 +32,14 @@ export const pageTitle = 'text-3xl font-semibold tracking-tight leading-[1.1]'
 export const mainPageTitle = 'text-2xl font-semibold uppercase tracking-[0.15em] leading-[1.1] text-accent-dim'
 export const bodyText = 'text-base text-zinc-400 leading-relaxed max-w-[44ch]'
 // Small gray label inside a card, like "Next up"
-export const sectionHeading = 'text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400'
+export const sectionHeading = 'text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400'
 // A heading over a whole part of a page, like Exercises and Progress on a workout: the same small
 // label in a lighter green than page titles, so it stands out from the gray labels inside cards
 export const pageSectionHeading = 'text-xs font-semibold uppercase tracking-[0.2em] text-accent-dim'
 export const editLink ='text-sm font-medium text-zinc-400 hover:text-zinc-50 transition-colors duration-200'
 // The one label that most needs noticing, the routine being followed (Active): solid green
-export const statusPill = 'text-[11px] font-semibold text-black bg-accent px-2.5 py-0.5 rounded-full'
+export const statusPill = 'text-[12px] font-semibold text-black bg-accent px-2.5 py-0.5 rounded-full'
 // A quieter label, like Next: the lighter green on a faint green tint, so it stands out from gray
 // text without competing with Active or the bright green buttons
-export const softPill = 'text-[11px] font-semibold text-accent-dim bg-accent-dim/12 px-2.5 py-0.5 rounded-full'
+export const softPill = 'text-[12px] font-semibold text-accent-dim bg-accent-dim/12 px-2.5 py-0.5 rounded-full'
 export const deleteLink = 'text-sm font-medium text-zinc-400 hover:text-red-400 transition-colors duration-200'

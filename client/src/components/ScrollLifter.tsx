@@ -88,7 +88,7 @@ export default function ScrollLifter() {
       {/* The rep count, or the PR call at the end */}
       <span
         key={done ? 'pr' : 'reps'}
-        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums ${
+        className={`px-2 py-0.5 rounded-full text-[12px] font-semibold tabular-nums ${
           done ? 'lifter-pr bg-accent text-black' : 'bg-zinc-900/80 text-zinc-300 ring-1 ring-white/10'
         }`}
       >

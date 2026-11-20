@@ -16,6 +16,8 @@ import PageHelp from '../components/PageHelp'
 import PasswordInput from '../components/PasswordInput'
 import Loading from '../components/Loading'
 import Reveal from '../components/Reveal'
+import { useFormErrors } from '../lib/useFormErrors'
+import { asksBeforeDeleting, setAsksBeforeDeleting } from '../lib/deletePrompt'
 
 interface Account {
   email: string
@@ -29,18 +31,22 @@ function errorMessage(err: unknown, fallback: string) {
   return fallback
 }
 
-// One labeled password field, shared by the dialogs below
-function PasswordField({ id, label, value, onChange, autoComplete }: {
+// One labeled password field, shared by the dialogs below. Its id is also its name, for the
+// message under it when something's wrong (error, from useFormErrors).
+function PasswordField({ id, label, what, value, onChange, autoComplete, error }: {
   id: string
   label: string
+  what: string
   value: string
   onChange: (value: string) => void
   autoComplete: string
+  error: React.ReactNode
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className={labelClass}>{label}</label>
-      <PasswordInput id={id} value={value} onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete} required className={inputClass} />
+      <PasswordInput id={id} name={id} what={what} value={value} onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete} required className={inputClass} />
+      {error}
     </div>
   )
 }
@@ -65,11 +71,12 @@ function ChangePasswordDialog({ email, onClose, onChanged }: { email: string; on
   const [repeat, setRepeat] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const fields = useFormErrors()
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (next.length < 6) { setError('The new password must be at least 6 characters.'); return }
-    if (next !== repeat) { setError("The new passwords don't match."); return }
+    if (next.length < 6) { fields.fail('new-password', 'Use at least 6 characters.'); return }
+    if (next !== repeat) { fields.fail('repeat-password', "This doesn't match the new password. Type the same password twice."); return }
     setError('')
     setSaving(true)
     try {
@@ -84,9 +91,9 @@ function ChangePasswordDialog({ email, onClose, onChanged }: { email: string; on
 
   return (
     <Modal title="Change password" busy={saving} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <PasswordField id="current-password" label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" />
+          <PasswordField id="current-password" label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" what="your current password" error={fields.error('current-password')} />
           {resetState === 'sent' ? (
             <p role="status" className="text-xs text-accent-dim wrap-break-word">
               We sent a reset link to {email}. It expires in 1 hour.
@@ -101,8 +108,8 @@ function ChangePasswordDialog({ email, onClose, onChanged }: { email: string; on
             </p>
           )}
         </div>
-        <PasswordField id="new-password" label="New password" value={next} onChange={setNext} autoComplete="new-password" />
-        <PasswordField id="repeat-password" label="New password again" value={repeat} onChange={setRepeat} autoComplete="new-password" />
+        <PasswordField id="new-password" label="New password" value={next} onChange={setNext} autoComplete="new-password" what="a new password" error={fields.error('new-password')} />
+        <PasswordField id="repeat-password" label="New password again" value={repeat} onChange={setRepeat} autoComplete="new-password" what="the new password again" error={fields.error('repeat-password')} />
         <p className="text-xs text-zinc-400">At least 6 characters. Your other devices will be logged out.</p>
         {error && <p role="alert" className="text-xs text-red-500">{error}</p>}
         <div className="flex justify-end gap-2 mt-1">
@@ -121,6 +128,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const fields = useFormErrors()
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -139,12 +147,12 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title="Delete account?" busy={deleting} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-4">
         <p className="text-sm text-zinc-400">
           Your account and everything in it will be permanently deleted: your exercises, workouts,
           routines and history. This can't be undone.
         </p>
-        <PasswordField id="delete-password" label="Type your password to confirm" value={password} onChange={setPassword} autoComplete="current-password" />
+        <PasswordField id="delete-password" label="Type your password to confirm" value={password} onChange={setPassword} autoComplete="current-password" what="your password" error={fields.error('delete-password')} />
         {error && <p role="alert" className="text-xs text-red-500">{error}</p>}
         <div className="flex justify-end gap-2 mt-1">
           <button type="button" onClick={onClose} disabled={deleting} className={secondaryButton}>Cancel</button>
@@ -254,6 +262,25 @@ function Section({ title, delay, tint, children }: { title: string; delay: numbe
   )
 }
 
+// Whether deleting an exercise, workout, routine or past workout asks first. Turned off by
+// "Remember my choice" in the delete dialog, and back on here. Saved on this device.
+function DeletePromptSetting() {
+  const [ask, setAsk] = useState(asksBeforeDeleting)
+  return (
+    <>
+      <Checkbox checked={ask} onChange={(next) => { setAsksBeforeDeleting(next); setAsk(next) }}>
+        Ask before deleting
+      </Checkbox>
+      <p className="text-xs text-zinc-400">
+        {ask
+          ? 'Deleting an exercise, workout, routine or past workout asks you first.'
+          : "Deleting happens straight away. You're only asked when something blocks it."}{' '}
+        Discarding a workout in progress always asks. Saved on this device.
+      </p>
+    </>
+  )
+}
+
 // The logged-in user's account: changing the password, the sounds and deleting the account. The
 // email is still loaded, since the password dialog sends its reset link there.
 export default function SettingsPage() {
@@ -321,7 +348,11 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-zinc-400">Saved on this device.</p>
             </Section>
 
-            <Section title="Delete account" delay={160} tint="from-red-500/14">
+            <Section title="Deleting" delay={160} tint="from-violet-400/14">
+              <DeletePromptSetting />
+            </Section>
+
+            <Section title="Delete account" delay={210} tint="from-red-500/14">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="min-w-0 text-sm text-zinc-400">Permanently delete your account and everything in it.</p>
                 <button

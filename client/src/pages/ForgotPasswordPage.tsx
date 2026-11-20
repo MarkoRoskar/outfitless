@@ -6,10 +6,12 @@ import { authSubmitButton, inputClass, labelClass, pageTitle } from '../lib/styl
 import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
 import Reveal from '../components/Reveal'
+import { useFormErrors } from '../lib/useFormErrors'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
+  const fields = useFormErrors()
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
 
@@ -66,11 +68,12 @@ export default function ForgotPasswordPage() {
 
               <Reveal onLoad variant="pop" delay={100}>
                 <div className="card-fade bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                  <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
                       <label className={labelClass}>Email</label>
                       <input
                         type="email"
+                        name="email"
                         placeholder="you@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -78,6 +81,7 @@ export default function ForgotPasswordPage() {
                         required
                         className={inputClass}
                       />
+                      {fields.error('email')}
                     </div>
 
                     {error && (

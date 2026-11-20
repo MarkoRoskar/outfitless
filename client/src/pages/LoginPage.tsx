@@ -8,6 +8,7 @@ import PageBackdrop from '../components/PageBackdrop'
 import PasswordInput from '../components/PasswordInput'
 import { ArrowLeftIcon } from '../components/icons'
 import Reveal from '../components/Reveal'
+import { useFormErrors } from '../lib/useFormErrors'
 
 export default function LoginPage() {
   const { login, token, logout } = useAuthStore()
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const fields = useFormErrors()
 
   const backLink = <Link to="/" className={`inline-flex items-center gap-1.5 ${navLink}`}><ArrowLeftIcon size={14} />Back</Link>
 
@@ -81,11 +83,12 @@ export default function LoginPage() {
           <Reveal onLoad variant="pop" delay={100}>
             <div className="card-fade bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className={labelClass}>Email</label>
                   <input
                     type="email"
+                    name="email"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -93,17 +96,20 @@ export default function LoginPage() {
                     required
                     className={inputClass}
                   />
+                  {fields.error('email')}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label className={labelClass}>Password</label>
                   <PasswordInput
+                    name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="off"
                     required
                     className={inputClass}
                   />
+                  {fields.error('password')}
                 </div>
 
                 {error && (

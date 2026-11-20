@@ -242,7 +242,7 @@ function ExerciseHeader({ exercise }: { exercise: SessionExercise }) {
         {/* The target this workout started with, written like on the workout's page */}
         {exercise.targetReps !== undefined && (exercise.noWeight || exercise.targetWeight !== undefined) && (
           <p className="mt-0.5 flex items-baseline gap-2 leading-5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Target</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Target</span>
             <span className="text-sm font-semibold tabular-nums text-accent-dim">
               {describeSet({ reps: exercise.targetReps, weight: exercise.noWeight ? undefined : exercise.targetWeight })}
             </span>
@@ -259,7 +259,7 @@ function ExerciseHeader({ exercise }: { exercise: SessionExercise }) {
       {change && (
         <span
           role="status"
-          className={`next-time-chip shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+          className={`next-time-chip shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[12px] font-semibold ${
             change.highlight ? 'bg-accent text-black' : 'bg-zinc-800 text-zinc-100 ring-1 ring-white/10'
           }`}
         >
@@ -734,6 +734,8 @@ export default function SessionPage() {
       {discarding && session && (
         <ConfirmDeleteDialog
           title="Discard workout?"
+          // Always asks: one slip would lose the sets logged so far
+          rememberable={false}
           message="The sets you logged will be deleted, and your targets stay as they were."
           path={`/sessions/${session._id}`}
           onClose={() => setDiscarding(false)}

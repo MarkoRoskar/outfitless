@@ -19,6 +19,8 @@ import DatePicker from './DatePicker'
 import Loading, { Spinner } from './Loading'
 import Reveal from './Reveal'
 import { listRevealDelay } from '../lib/useReveal'
+import ClearFiltersButton from './ClearFiltersButton'
+import { useStoredFilter } from '../lib/useStoredFilter'
 
 interface LoggedSet {
   reps: number
@@ -241,11 +243,14 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
   const [savedNote, setSavedNote] = useState('')
   // The History page's filters. '' means all workouts. The server applies them, so they cover
   // every finished workout, not just the ones already loaded.
-  const [workoutFilter, setWorkoutFilter] = useState('')
-  const [period, setPeriod] = useState<Period>('any')
+  // Remembered while this tab is open, so coming back to History finds them as they were left.
+  // The home screen's recent workouts (limit) have no filters, so nothing is stored for them.
+  const stored = (name: string) => (limit === undefined ? `history:${name}` : null)
+  const [workoutFilter, setWorkoutFilter] = useStoredFilter(stored('workout'), '')
+  const [period, setPeriod] = useStoredFilter<Period>(stored('period'), 'any')
   // The custom range's days, as "2026-11-16", or '' for open-ended
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
+  const [fromDate, setFromDate] = useStoredFilter(stored('from'), '')
+  const [toDate, setToDate] = useStoredFilter(stored('to'), '')
   const filtering = workoutFilter !== '' || period !== 'any'
   // The workouts to pick from, loaded only on the History page. If they can't load, there's just no workout filter.
   const [workoutOptions, setWorkoutOptions] = useState<{ value: string; label: string }[] | null>(null)
@@ -261,6 +266,9 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
       .catch(() => {})
     return () => { ignore = true }
   }, [limit])
+
+  // Back to every workout at any date, as the page opens
+  const clearFilters = () => changeFilters({ workout: '', period: 'any', from: '', to: '' })
 
   // Picking what's already chosen changes nothing, so it mustn't start a load that never comes
   function changeFilters(next: { workout?: string; period?: Period; from?: string; to?: string }) {
@@ -374,6 +382,7 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
               className={`w-full sm:w-44 ${toolbarField}`}
             />
           </div>
+          <ClearFiltersButton shown={filtering} onClear={clearFilters} />
         </Reveal>
       )}
 
@@ -417,7 +426,7 @@ export default function WorkoutHistory({ limit, initialPage }: { limit?: number;
       {status === 'ready' && sessions.length === 0 && filtering && (
         <p className="text-sm text-zinc-400">
           No finished workouts match these filters.{' '}
-          <button onClick={() => changeFilters({ workout: '', period: 'any', from: '', to: '' })} className={inlineLink}>Clear filters</button>
+          <button onClick={clearFilters} className={inlineLink}>Clear filters</button>
         </p>
       )}
 

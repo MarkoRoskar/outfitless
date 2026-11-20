@@ -9,6 +9,7 @@ import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
 import { ArrowLeftIcon } from '../components/icons'
 import Reveal from '../components/Reveal'
+import { useFormErrors } from '../lib/useFormErrors'
 
 export default function RegisterPage() {
   const { token, logout } = useAuthStore()
@@ -18,6 +19,7 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const fields = useFormErrors()
   const [done, setDone] = useState(false)
 
   if (token) {
@@ -44,7 +46,7 @@ export default function RegisterPage() {
     setError('')
 
     if (password !== confirm) {
-      setError('Passwords do not match.')
+      fields.fail('confirm', "This doesn't match the password above. Type the same password twice.")
       return
     }
 
@@ -58,8 +60,9 @@ export default function RegisterPage() {
         // The server explains a refusal, like a taken email or an email it couldn't send
         const data = error.response?.data
         if (data?.message === 'Validation failed') {
+          // Under the password, since that's what to change
           const passwordErrors = data.errors?.properties?.password?.errors
-          setError(passwordErrors?.[0] || 'Invalid password format.')
+          fields.fail('password', passwordErrors?.[0] || 'Invalid password format.')
         } else {
           setError(data?.message || 'Something went wrong.')
         }
@@ -106,11 +109,12 @@ export default function RegisterPage() {
 
               <Reveal onLoad variant="pop" delay={100}>
                 <div className="card-fade bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                  <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
                       <label className={labelClass}>Email</label>
                       <input
                         type="email"
+                        name="email"
                         placeholder="you@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -118,28 +122,35 @@ export default function RegisterPage() {
                         required
                         className={inputClass}
                       />
+                      {fields.error('email')}
                     </div>
 
                     <div className="flex flex-col gap-1.5">
                       <label className={labelClass}>Password</label>
                       <PasswordInput
+                        name="password"
+                        what="a password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="new-password"
                         required
                         className={inputClass}
                       />
+                      {fields.error('password')}
                     </div>
 
                     <div className="flex flex-col gap-1.5">
                       <label className={labelClass}>Confirm password</label>
                       <PasswordInput
+                        name="confirm"
+                        what="the password again"
                         value={confirm}
                         onChange={(e) => setConfirm(e.target.value)}
                         autoComplete="new-password"
                         required
                         className={inputClass}
                       />
+                      {fields.error('confirm')}
                     </div>
 
                     {error && (

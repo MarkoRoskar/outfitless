@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isAxiosError } from 'axios'
 import api, { isUnauthorized } from '../lib/axios'
 import { Link } from 'react-router-dom'
@@ -6,18 +6,39 @@ import { inlineLink, secondaryButton, dangerButton } from '../lib/styles'
 import { ChevronRightIcon } from './icons'
 import { useAuthStore } from '../store/authStore'
 import Modal from './Modal'
+import Checkbox from './Checkbox'
+import { asksBeforeDeleting, setAsksBeforeDeleting } from '../lib/deletePrompt'
 
-// Asks for confirmation, then sends DELETE to the given API path
-export default function ConfirmDeleteDialog({ title, message, path, onClose, onDeleted }: {
+// Asks for confirmation, then sends DELETE to the given API path.
+//
+// Ticking "Remember my choice" stops the asking on this device (lib/deletePrompt.ts; Settings
+// turns it back on). After that the delete happens straight away, with nothing on screen, and
+// the dialog only shows when the delete is blocked, like an exercise a workout still uses, so
+// it can say why. rememberable={false} always asks, for losing something there's no getting
+// back by mistake, like the sets of a workout in progress.
+export default function ConfirmDeleteDialog({ title, message, path, onClose, onDeleted, rememberable = true }: {
   title: string
   message: string
   path: string
   onClose: () => void
   onDeleted: () => void
+  rememberable?: boolean
 }) {
   const { logout } = useAuthStore()
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  // Decided once, as the dialog opens
+  const [skipAsking] = useState(() => rememberable && !asksBeforeDeleting())
+  const [remember, setRemember] = useState(false)
+  // Started once, even when React runs the effect twice while developing
+  const started = useRef(false)
+  useEffect(() => {
+    if (!skipAsking || started.current) return
+    started.current = true
+    handleDelete()
+    // Only as the dialog opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // Workouts or routines that still use the item, each linked so it can be removed there
   const [usedIn, setUsedIn] = useState<{ name: string; to: string }[]>([])
 
@@ -54,6 +75,9 @@ export default function ConfirmDeleteDialog({ title, message, path, onClose, onD
     }
   }
 
+  // Not asking: nothing to show unless the delete was blocked
+  if (skipAsking && !error) return null
+
   return (
     // Nothing to type, so a click outside it can safely close it, like the help pop-ups
     <Modal title={title} busy={deleting} onClose={onClose} closeOnOutsideClick>
@@ -78,11 +102,19 @@ export default function ConfirmDeleteDialog({ title, message, path, onClose, onD
           </div>
         )}
 
+        {/* Not after a blocked delete without asking: there's nothing to remember then */}
+        {rememberable && !skipAsking && (
+          <Checkbox checked={remember} onChange={setRemember}>Remember my choice and don't ask again</Checkbox>
+        )}
+
         <div className="flex justify-end gap-2 mt-1">
           <button type="button" onClick={onClose} disabled={deleting} className={secondaryButton}>Cancel</button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => {
+              if (remember) setAsksBeforeDeleting(false)
+              handleDelete()
+            }}
             disabled={deleting}
             className={dangerButton}
           >

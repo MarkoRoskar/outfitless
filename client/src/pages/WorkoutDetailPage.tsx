@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import { isAxiosError } from 'axios'
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
+import type { ReactNode } from 'react'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import api, { conflictMessage, isUnauthorized } from '../lib/axios'
@@ -30,6 +31,7 @@ import Reveal from '../components/Reveal'
 import Expand from '../components/Expand'
 import MuscleGroupPhotos from '../components/MuscleGroupPhotos'
 import { listRevealDelay, useReveal } from '../lib/useReveal'
+import { useFormErrors } from '../lib/useFormErrors'
 
 // Loaded separately, so the chart library only downloads once Progress is opened
 const WorkoutProgressChart = lazy(() => import('../components/WorkoutProgressChart'))
@@ -135,8 +137,11 @@ interface ActiveSession {
 
 // A number box with its label above and, optionally, its unit inside at the right end, like the
 // rest field in the New workout dialog. The unit in the box keeps the label short.
-function NumberField({ label, value, onChange, min, max, step = 1, unit }: {
+// name and error are for the message under it when it needs fixing (lib/useFormErrors.tsx).
+function NumberField({ label, name, error, value, onChange, min, max, step = 1, unit }: {
   label: string
+  name: string
+  error: ReactNode
   value: string
   onChange: (value: string) => void
   min: number
@@ -151,6 +156,7 @@ function NumberField({ label, value, onChange, min, max, step = 1, unit }: {
       <div className="relative">
         <input
           id={id}
+          name={name}
           type="number"
           min={min}
           max={max}
@@ -167,6 +173,7 @@ function NumberField({ label, value, onChange, min, max, step = 1, unit }: {
           </span>
         )}
       </div>
+      {error}
     </div>
   )
 }
@@ -200,6 +207,7 @@ function WorkoutExerciseDialog({ workoutId, entry, exercises, onClose, onSaved }
   const [keepOpen, setKeepOpen] = useState(false)
   // The last exercise added while staying open, confirmed above the buttons
   const [added, setAdded] = useState('')
+  const fields = useFormErrors()
 
   // Each exercise with its muscle groups under it. The search matches either, so typing "chest"
   // finds every chest exercise.
@@ -212,15 +220,15 @@ function WorkoutExerciseDialog({ workoutId, entry, exercises, onClose, onSaved }
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!entry && !exerciseId) {
-      setError('Choose an exercise.')
+      fields.fail('exercise', 'Choose an exercise from the list.')
       return
     }
     if (!amrap && Number(maxReps) < Number(minReps)) {
-      setError('Max reps must be at least min reps.')
+      fields.fail('maxReps', `Make it at least the min reps (${minReps}).`)
       return
     }
     if (!amrap && (Number(currentReps) < Number(minReps) || Number(currentReps) > Number(maxReps))) {
-      setError('Target reps must be between min and max reps.')
+      fields.fail('currentReps', `Enter a number from ${minReps} to ${maxReps}, inside the rep range.`)
       return
     }
 
@@ -267,7 +275,7 @@ function WorkoutExerciseDialog({ workoutId, entry, exercises, onClose, onSaved }
       busy={saving}
       onClose={onClose}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-4">
         {!entry && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor="workout-exercise-id" className={labelClass}>Exercise</label>
@@ -275,22 +283,23 @@ function WorkoutExerciseDialog({ workoutId, entry, exercises, onClose, onSaved }
               id="workout-exercise-id"
               value={exerciseId}
               options={exerciseOptions}
-              onChange={setExerciseId}
+              onChange={(id) => { fields.clear('exercise'); setExerciseId(id) }}
               searchable
               searchPlaceholder="Search by name or muscle group"
               placeholder="Choose an exercise…"
               className={`w-full ${fieldClass}`}
             />
+            {fields.error('exercise')}
           </div>
         )}
 
         {/* One flow of labeled fields, like the New exercise, workout and routine dialogs. Each
             tick box sits right above the fields it hides. */}
         <div className="grid grid-cols-2 gap-3">
-          <NumberField label="Sets" value={sets} onChange={setSets} min={1} max={MAX_SETS} />
+          <NumberField label="Sets" name="sets" error={fields.error('sets')} value={sets} onChange={setSets} min={1} max={MAX_SETS} />
           {/* One set has nothing to rest between. The empty div keeps the grid cell. */}
           {Number(sets) !== 1 ? (
-            <NumberField label="Rest" unit="seconds" value={restTime} onChange={setRestTime} min={0} max={MAX_REST_SECONDS} />
+            <NumberField label="Rest" name="restTime" error={fields.error('restTime')} unit="seconds" value={restTime} onChange={setRestTime} min={0} max={MAX_REST_SECONDS} />
           ) : (
             <div />
           )}
@@ -300,21 +309,21 @@ function WorkoutExerciseDialog({ workoutId, entry, exercises, onClose, onSaved }
         <div className="grid grid-cols-3 gap-3">
           {!amrap && (
             <>
-              <NumberField label="Min reps" value={minReps} onChange={setMinReps} min={1} max={MAX_REPS} />
-              <NumberField label="Max reps" value={maxReps} onChange={setMaxReps} min={1} max={MAX_REPS} />
+              <NumberField label="Min reps" name="minReps" error={fields.error('minReps')} value={minReps} onChange={setMinReps} min={1} max={MAX_REPS} />
+              <NumberField label="Max reps" name="maxReps" error={fields.error('maxReps')} value={maxReps} onChange={setMaxReps} min={1} max={MAX_REPS} />
             </>
           )}
-          <NumberField label="Target reps" value={currentReps} onChange={setCurrentReps} min={0} max={MAX_REPS} />
+          <NumberField label="Target reps" name="currentReps" error={fields.error('currentReps')} value={currentReps} onChange={setCurrentReps} min={0} max={MAX_REPS} />
         </div>
 
         <Checkbox checked={noWeight} onChange={setNoWeight}>No weight, like pull-ups or planks</Checkbox>
         {/* Bottom-aligned, so the boxes stay level if a label wraps on a narrow phone */}
         {!noWeight && (
           <div className="grid grid-cols-2 gap-3 items-end">
-            <NumberField label="Target weight" unit="kg" value={currentWeight} onChange={setCurrentWeight} min={0} max={MAX_WEIGHT} step="any" />
+            <NumberField label="Target weight" name="currentWeight" error={fields.error('currentWeight')} unit="kg" value={currentWeight} onChange={setCurrentWeight} min={0} max={MAX_WEIGHT} step="any" />
             {/* Max-rep targets never change by themselves, so there's nothing to step by */}
             {!amrap && (
-              <NumberField label="Increment/decrement" unit="kg" value={weightIncrement} onChange={setWeightIncrement} min={0} max={MAX_WEIGHT_INCREMENT} step="any" />
+              <NumberField label="Increment/decrement" name="weightIncrement" error={fields.error('weightIncrement')} unit="kg" value={weightIncrement} onChange={setWeightIncrement} min={0} max={MAX_WEIGHT_INCREMENT} step="any" />
             )}
           </div>
         )}
@@ -449,14 +458,14 @@ function SortableEntry({ entry, index, position, name, muscleGroups, disabled, o
           </p>
           {/* On phones the current target is a line here, so the name keeps its room */}
           <p className="sm:hidden flex items-baseline gap-2 leading-5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Target</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Target</span>
             <span className="text-sm font-semibold tabular-nums text-accent-dim">{current}</span>
           </p>
         </div>
 
         {/* Wider screens have room for it as a tile. The lighter green, so it doesn't outshine the Start card. */}
         <div ref={targetRef} className="hidden sm:flex shrink-0 flex-col gap-0.5 px-3 py-2 rounded-xl bg-accent-dim/8">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Target</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Target</span>
           <span className="text-sm font-semibold tabular-nums text-accent-dim">{current}</span>
         </div>
 
@@ -530,7 +539,7 @@ function StartCard({ label, summary, to, onClick, busy = false, error }: {
       </span>
       <span className="min-w-0 flex-1 flex flex-col text-left">
         <span className="text-base font-bold text-accent">{label}</span>
-        <span className="text-[13px] text-zinc-400 tabular-nums">{summary}</span>
+        <span className="text-[14px] text-zinc-400 tabular-nums">{summary}</span>
       </span>
       <ArrowRightIcon size={20} className="shrink-0 text-accent group-hover:translate-x-0.5 transition-transform duration-200" />
     </>

@@ -25,6 +25,8 @@ import { helpText } from '../lib/helpText'
 import Loading from '../components/Loading'
 import Reveal from '../components/Reveal'
 import { listRevealDelay, useReveal } from '../lib/useReveal'
+import { useFormErrors } from '../lib/useFormErrors'
+import { useStoredFilter } from '../lib/useStoredFilter'
 
 // Workout as returned by the API
 interface Workout {
@@ -51,11 +53,13 @@ function WorkoutDialog({ workout, onClose, onSaved }: {
   const [rest, setRest] = useState(String(workout?.restBetweenExercises ?? 60))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const fields = useFormErrors()
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
+    // Only spaces passes the browser's check, so it's caught here
     if (!name.trim()) {
-      setError('Name is required.')
+      fields.fail('name', 'Enter a name.')
       return
     }
 
@@ -79,11 +83,13 @@ function WorkoutDialog({ workout, onClose, onSaved }: {
 
   return (
     <Modal title={workout ? 'Edit workout' : 'New workout'} busy={saving} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="workout-name" className={labelClass}>Name</label>
           <input
             id="workout-name"
+            name="name"
+            data-what="a name"
             type="text"
             placeholder="Push Day"
             value={name}
@@ -94,6 +100,7 @@ function WorkoutDialog({ workout, onClose, onSaved }: {
             aria-describedby="workout-name-hint"
             className={`h-10 ${fieldClass}`}
           />
+          {fields.error('name')}
           <p id="workout-name-hint" className="text-xs text-zinc-400">
             Name it after what you train, like Push Day or Legs.
           </p>
@@ -105,6 +112,7 @@ function WorkoutDialog({ workout, onClose, onSaved }: {
           <div className="relative">
             <input
               id="workout-rest"
+              name="rest"
               type="number"
               min={0}
               max={MAX_REST_SECONDS}
@@ -119,6 +127,7 @@ function WorkoutDialog({ workout, onClose, onSaved }: {
               seconds
             </span>
           </div>
+          {fields.error('rest')}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -244,7 +253,8 @@ export default function WorkoutsPage() {
   const [deleting, setDeleting] = useState<Workout | null>(null)
   const [reordering, setReordering] = useState(false)
   const [reorderError, setReorderError] = useState('')
-  const [search, setSearch] = useState('')
+  // Remembered while this tab is open, so coming back to the page finds it as it was left
+  const [search, setSearch] = useStoredFilter('workouts:search', '')
   // How many matching workouts are on screen. A new search starts again from the first page.
   const [shownCount, setShownCount] = useState(PAGE_SIZE)
   // How many exercises the user has, so the page can say to create them first. null if unknown.

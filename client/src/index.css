@@ -33,6 +33,14 @@
   /* Page background */
   --color-surface: #000000;
 
+  /* Text a step bigger than Tailwind's sizes (12, 14, 16, 18 and 20 px), so it's easier to read.
+     Line heights keep Tailwind's proportions. Headings from 2xl up are big enough as they are. */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.3125rem;
+
   --font-sans: 'Urbanist', system-ui, sans-serif;
   /* Only for the outFITless name, used as the font-brand class */
   --font-brand: 'Big Shoulders Display', 'Urbanist', sans-serif;
@@ -642,4 +650,15 @@ dialog[open].modal-pop::backdrop {
   .trail-glow {
     display: none;
   }
+}
+
+/* A field that needs fixing after a submit (lib/useFormErrors.tsx): a red border, its message in
+   red right under it. Outside the layers, so it wins over the field's usual border colors. */
+input[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: rgb(239 68 68 / 0.7);
+}
+input[aria-invalid="true"]:focus,
+textarea[aria-invalid="true"]:focus {
+  border-color: rgb(239 68 68);
 }

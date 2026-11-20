@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar'
 import PageBackdrop from '../components/PageBackdrop'
 import Reveal from '../components/Reveal'
 import { isAxiosError } from 'axios'
+import { useFormErrors } from '../lib/useFormErrors'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
@@ -17,13 +18,14 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const fields = useFormErrors()
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
 
     if (password !== confirm) {
-      setError('Passwords do not match.')
+      fields.fail('confirm', "This doesn't match the password above. Type the same password twice.")
       return
     }
 
@@ -37,7 +39,8 @@ export default function ResetPasswordPage() {
         const data = error.response?.data
         if (data?.message === 'Validation failed') {
           const passwordErrors = data.errors?.properties?.password?.errors
-          setError(passwordErrors?.[0] || 'Invalid password format.')
+          // Under the password, since that's what to change
+          fields.fail('password', passwordErrors?.[0] || 'Invalid password format.')
         } else {
           setError(data?.message || 'Something went wrong.')
         }
@@ -80,27 +83,33 @@ export default function ResetPasswordPage() {
 
           <Reveal onLoad variant="pop" delay={100}>
             <div className="card-fade bg-zinc-900/55 ring-1 ring-inset ring-white/4 rounded-3xl p-6 flex flex-col gap-4">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className={labelClass}>New password</label>
                   <PasswordInput
+                    name="password"
+                    what="a new password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="new-password"
                     required
                     className={inputClass}
                   />
+                  {fields.error('password')}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label className={labelClass}>Confirm password</label>
                   <PasswordInput
+                    name="confirm"
+                    what="the new password again"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     autoComplete="new-password"
                     required
                     className={inputClass}
                   />
+                  {fields.error('confirm')}
                 </div>
 
                 {error && <p className="text-xs text-red-500">{error}</p>}

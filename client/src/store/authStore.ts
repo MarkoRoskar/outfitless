@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import api from '../lib/axios'
+import { forgetStoredFilters } from '../lib/useStoredFilter'
 
 interface User {
   id: string
@@ -28,6 +29,8 @@ export const useAuthStore = create<AuthState>((set) => {
       // Cancels the refresh token on the server. The user is logged out here either way.
       api.post('/auth/logout').catch(() => {})
       localStorage.removeItem('token')
+      // The next person on this device starts with every page's filters as they open
+      forgetStoredFilters()
       set({ user: null, token: null })
     },
   }

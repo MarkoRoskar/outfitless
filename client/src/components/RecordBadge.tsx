@@ -11,7 +11,7 @@ export default function RecordBadge({ celebrateDelay }: { celebrateDelay?: numbe
   return (
     <span
       title="Personal record: your best set ever for this exercise"
-      className={`${statusPill} px-1.5! py-0! text-[10px]! leading-4 ${celebrate ? 'record-pop' : ''}`}
+      className={`${statusPill} px-1.5! py-0! text-[11px]! leading-4 ${celebrate ? 'record-pop' : ''}`}
       style={celebrate ? { '--record-delay': `${celebrateDelay}ms` } as CSSProperties : undefined}
     >
       PR

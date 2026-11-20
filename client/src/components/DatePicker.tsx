@@ -131,7 +131,7 @@ export default function DatePicker({ id, value, onChange, max, placeholder = 'An
 
           <div className="grid grid-cols-7 gap-0.5 text-center">
             {WEEKDAYS.map((day) => (
-              <span key={day} aria-hidden="true" className="py-1 text-[11px] font-medium text-zinc-500">{day}</span>
+              <span key={day} aria-hidden="true" className="py-1 text-[12px] font-medium text-zinc-500">{day}</span>
             ))}
             {cells.map((date, index) => {
               if (!date) return <span key={`blank-${index}`} />

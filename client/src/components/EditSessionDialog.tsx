@@ -31,6 +31,8 @@ export default function EditSessionDialog({ session, onClose, onSaved }: {
   )
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  // After a save with a number that's wrong, each such set says under it what to fix
+  const [tried, setTried] = useState(false)
 
   function change(exerciseIndex: number, setIndex: number, update: Partial<DraftSet>) {
     setDrafts((current) => current.map((sets, i) =>
@@ -47,7 +49,7 @@ export default function EditSessionDialog({ session, onClose, onSaved }: {
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!allValid) {
-      setError(`Reps must be whole numbers up to ${MAX_REPS}, and weights between 0 and ${MAX_WEIGHT} kg.`)
+      setTried(true)
       return
     }
     setError('')
@@ -74,7 +76,8 @@ export default function EditSessionDialog({ session, onClose, onSaved }: {
 
   return (
     <Modal title="Edit workout" busy={saving} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {/* noValidate: the sets say what to fix under them, instead of the browser's bubbles */}
+      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
         <p className="-mt-2 text-sm text-zinc-400 wrap-break-word">
           {session.workoutName} · {formatDay(session.finishedAt)}
         </p>
@@ -85,8 +88,15 @@ export default function EditSessionDialog({ session, onClose, onSaved }: {
             <ol className="flex flex-col gap-2">
               {drafts[exerciseIndex].map((set, setIndex) => {
                 const label = `set ${setIndex + 1} of ${exercise.name}`
+                const badReps = !repsValid(set.reps)
+                const badWeight = !exercise.noWeight && !weightValid(set.weight)
+                const fix = [
+                  badReps && `Reps: a whole number from 0 to ${MAX_REPS}.`,
+                  badWeight && `Weight: a number from 0 to ${MAX_WEIGHT} kg.`,
+                ].filter(Boolean).join(' ')
                 return (
-                  <li key={setIndex} className="flex items-center gap-2">
+                  <li key={setIndex} className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
                     <span className="w-4 shrink-0 text-xs font-mono font-bold text-accent-dim">{setIndex + 1}</span>
                     <input
                       type="number"
@@ -94,7 +104,7 @@ export default function EditSessionDialog({ session, onClose, onSaved }: {
                       value={set.reps}
                       onChange={(e) => change(exerciseIndex, setIndex, { reps: e.target.value })}
                       aria-label={`Reps for ${label}`}
-                      aria-invalid={!repsValid(set.reps)}
+                      aria-invalid={tried && badReps}
                       className={`h-10 min-w-0 flex-1 tabular-nums ${fieldClass}`}
                     />
                     <span className="shrink-0 text-xs text-zinc-400">reps</span>
@@ -107,7 +117,7 @@ export default function EditSessionDialog({ session, onClose, onSaved }: {
                           value={set.weight}
                           onChange={(e) => change(exerciseIndex, setIndex, { weight: e.target.value })}
                           aria-label={`Weight in kg for ${label}`}
-                          aria-invalid={!weightValid(set.weight)}
+                          aria-invalid={tried && badWeight}
                           className={`h-10 min-w-0 flex-1 tabular-nums ${fieldClass}`}
                         />
                         <span className="shrink-0 text-xs text-zinc-400">kg</span>
@@ -127,6 +137,8 @@ export default function EditSessionDialog({ session, onClose, onSaved }: {
                     >
                       <CheckIcon size={18} />
                     </button>
+                  </div>
+                  {tried && fix && <p role="alert" className="pl-6 text-xs text-red-500">{fix}</p>}
                   </li>
                 )
               })}

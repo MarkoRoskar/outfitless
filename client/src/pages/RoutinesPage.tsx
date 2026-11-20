@@ -27,6 +27,8 @@ import Loading from '../components/Loading'
 import Reveal from '../components/Reveal'
 import Expand from '../components/Expand'
 import { listRevealDelay, useReveal } from '../lib/useReveal'
+import { useFormErrors } from '../lib/useFormErrors'
+import { useStoredFilter } from '../lib/useStoredFilter'
 
 // Routine as returned by the API. workouts holds workout IDs in the order they're done,
 // and the same ID can appear more than once.
@@ -143,14 +145,17 @@ function RoutineDialog({ routine, workouts, onClose, onSaved }: {
     })
   }
 
+  const fields = useFormErrors()
+
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
+    // Only spaces passes the browser's check, so it's caught here
     if (!name.trim()) {
-      setError('Name is required.')
+      fields.fail('name', 'Enter a name.')
       return
     }
     if (chosen.length === 0) {
-      setError('Add at least one workout.')
+      fields.fail('workouts', 'Add at least one workout, from the list below.')
       return
     }
 
@@ -174,11 +179,13 @@ function RoutineDialog({ routine, workouts, onClose, onSaved }: {
 
   return (
     <Modal title={routine ? 'Edit routine' : 'New routine'} busy={saving} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="routine-name" className={labelClass}>Name</label>
           <input
             id="routine-name"
+            name="name"
+            data-what="a name"
             type="text"
             placeholder="Push / Pull / Legs"
             value={name}
@@ -189,6 +196,7 @@ function RoutineDialog({ routine, workouts, onClose, onSaved }: {
             aria-describedby="routine-name-hint"
             className={`h-10 ${fieldClass}`}
           />
+          {fields.error('name')}
           <p id="routine-name-hint" className="text-xs text-zinc-400">
             Name the plan, like Push / Pull / Legs or Upper / Lower.
           </p>
@@ -200,6 +208,7 @@ function RoutineDialog({ routine, workouts, onClose, onSaved }: {
           {chosen.length === 0 && (
             <p className="text-sm text-zinc-400">No workouts yet. Add them in the order you'll do them.</p>
           )}
+          {fields.error('workouts')}
 
           {chosen.length > 0 && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -225,7 +234,7 @@ function RoutineDialog({ routine, workouts, onClose, onSaved }: {
               id="routine-workout"
               value=""
               options={workoutOptions}
-              onChange={(id) => setChosen((current) => [...current, withKey(id)])}
+              onChange={(id) => { fields.clear('workouts'); setChosen((current) => [...current, withKey(id)]) }}
               searchable
               searchPlaceholder="Search workouts or exercises"
               placeholder="+ Add a workout…"
@@ -445,12 +454,14 @@ export default function RoutinesPage() {
   const [editing, setEditing] = useState<Routine | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Routine | null>(null)
   const [activeError, setActiveError] = useState('')
-  const [search, setSearch] = useState('')
-  // How many matching routines are on screen. A new search starts again from the first page.
-  const [shownCount, setShownCount] = useState(PAGE_SIZE)
   // A routine to open, from a link like /routines?open=<id>
   const [searchParams] = useSearchParams()
   const linkedId = searchParams.get('open')
+  // Remembered while this tab is open, so coming back to the page finds it as it was left. Not
+  // when following a link to a routine, which an old search could hide.
+  const [search, setSearch] = useStoredFilter(linkedId ? null : 'routines:search', '')
+  // How many matching routines are on screen. A new search starts again from the first page.
+  const [shownCount, setShownCount] = useState(PAGE_SIZE)
   const [reordering, setReordering] = useState(false)
   const [reorderError, setReorderError] = useState('')
   // Cards can be dragged with a mouse or finger, or moved with the keyboard

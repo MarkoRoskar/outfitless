@@ -25,6 +25,10 @@ import Reveal from '../components/Reveal'
 import Expand from '../components/Expand'
 import MuscleGroupPhotos from '../components/MuscleGroupPhotos'
 import { listRevealDelay, useReveal } from '../lib/useReveal'
+import { useFormErrors } from '../lib/useFormErrors'
+import ClearFiltersButton from '../components/ClearFiltersButton'
+import { useStoredFilter } from '../lib/useStoredFilter'
+import BackToTop from '../components/BackToTop'
 
 // Exercise as returned by the API (_id is MongoDB's ID field)
 interface Exercise {
@@ -74,6 +78,7 @@ function ExerciseDialog({ exercise, existing, onClose, onSaved }: {
   const [saving, setSaving] = useState(false)
   // Whether to stay open for the next exercise after creating this one
   const [keepOpen, setKeepOpen] = useState(false)
+  const fields = useFormErrors()
   // The last exercise added while staying open, confirmed above the buttons
   const [added, setAdded] = useState('')
   const nameRef = useRef<HTMLInputElement>(null)
@@ -88,6 +93,7 @@ function ExerciseDialog({ exercise, existing, onClose, onSaved }: {
   // Deselect the group if it's selected, otherwise select it.
   // Always builds a new array, because React won't notice a change to the existing one.
   function toggleGroup(group: string) {
+    fields.clear('groups')
     setGroups((current) =>
       current.includes(group) ? current.filter((g) => g !== group) : [...current, group]
     )
@@ -95,12 +101,13 @@ function ExerciseDialog({ exercise, existing, onClose, onSaved }: {
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
+    // Only spaces passes the browser's check, so it's caught here
     if (!name.trim()) {
-      setError('Name is required.')
+      fields.fail('name', 'Enter a name.')
       return
     }
     if (groups.length === 0) {
-      setError('Select at least one muscle group.')
+      fields.fail('groups', 'Pick at least one muscle group.')
       return
     }
 
@@ -136,12 +143,14 @@ function ExerciseDialog({ exercise, existing, onClose, onSaved }: {
 
   return (
     <Modal title={exercise ? 'Edit exercise' : 'New exercise'} busy={saving} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form {...fields.form} onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="exercise-name" className={labelClass}>Name</label>
           <input
             ref={nameRef}
             id="exercise-name"
+            name="name"
+            data-what="a name"
             type="text"
             placeholder="Bench Press"
             value={name}
@@ -152,6 +161,7 @@ function ExerciseDialog({ exercise, existing, onClose, onSaved }: {
             aria-describedby={duplicate ? 'exercise-name-duplicate' : 'exercise-name-hint'}
             className={`h-10 ${fieldClass}`}
           />
+          {fields.error('name')}
           {/* The hint makes way for the duplicate warning, so there's only ever one line here */}
           {!duplicate && (
             <p id="exercise-name-hint" className="text-xs text-zinc-400">
@@ -189,6 +199,7 @@ function ExerciseDialog({ exercise, existing, onClose, onSaved }: {
               )
             })}
           </div>
+          {fields.error('groups')}
         </fieldset>
 
         <div className="flex flex-col gap-1.5">
@@ -363,10 +374,19 @@ export default function ExercisesPage() {
   const [editing, setEditing] = useState<Exercise | 'new' | null>(null)
   // The exercise waiting for delete confirmation, or null when the dialog is closed
   const [deleting, setDeleting] = useState<Exercise | null>(null)
-  const [sortBy, setSortBy] = useState<SortOption>('newest')
+  // Remembered while this tab is open, so coming back to the page finds them as they were left
+  const [sortBy, setSortBy] = useStoredFilter<SortOption>('exercises:sort', 'newest')
   // The muscle groups to show. Empty shows every exercise.
-  const [groupFilter, setGroupFilter] = useState<string[]>([])
-  const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useStoredFilter<string[]>('exercises:groups', [])
+  const [search, setSearch] = useStoredFilter('exercises:search', '')
+  // The toolbar as the page opens: no search, newest first, every group
+  const filtersChanged = search !== '' || sortBy !== 'newest' || groupFilter.length > 0
+  function clearFilters() {
+    setSearch('')
+    setSortBy('newest')
+    setGroupFilter([])
+    setShownCount(PAGE_SIZE)
+  }
   // How many of the matching exercises are on screen. Changing the search, filter or sort starts
   // again from the first page, so the list never opens partway down.
   const [shownCount, setShownCount] = useState(PAGE_SIZE)
@@ -496,6 +516,7 @@ export default function ExercisesPage() {
                   className={`w-full sm:w-40 ${toolbarField}`}
                 />
               </div>
+              <ClearFiltersButton shown={filtersChanged} onClear={clearFilters} />
             </div>
           </Reveal>
         )}
@@ -503,10 +524,7 @@ export default function ExercisesPage() {
         {status === 'ready' && exercises.length > 0 && visibleExercises.length === 0 && (
           <p className="text-sm text-zinc-400">
             No exercises match your search and filter.{' '}
-            <button
-              onClick={() => { setSearch(''); setGroupFilter([]); setShownCount(PAGE_SIZE) }}
-              className={inlineLink}
-            >
+            <button onClick={clearFilters} className={inlineLink}>
               Clear them
             </button>
           </p>
@@ -538,6 +556,8 @@ export default function ExercisesPage() {
         )}
 
       </main>
+      {/* The list can grow long, so there's a quick way back up */}
+      <BackToTop />
 
       {/* Dialogs only exist while open, so each one starts with fresh state */}
       {editing && (

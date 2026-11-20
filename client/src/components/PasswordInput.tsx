@@ -3,6 +3,9 @@ import { EyeIcon, EyeOffIcon } from './icons'
 
 interface Props {
   id?: string
+  name?: string
+  // What to enter, for the message under it when it's left empty (lib/useFormErrors.tsx)
+  what?: string
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   placeholder?: string
@@ -11,13 +14,15 @@ interface Props {
   className?: string
 }
 
-export default function PasswordInput({ id, value, onChange, placeholder = '••••••••', autoComplete, required, className }: Props) {
+export default function PasswordInput({ id, name, what, value, onChange, placeholder = '••••••••', autoComplete, required, className }: Props) {
   const [show, setShow] = useState(false)
 
   return (
     <div className="relative">
       <input
         id={id}
+        name={name}
+        data-what={what}
         type={show ? 'text' : 'password'}
         value={value}
         onChange={onChange}

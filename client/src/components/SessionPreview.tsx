@@ -132,7 +132,7 @@ export default function SessionPreview() {
           {allDone && (
             <span
               role="status"
-              className={`next-time-chip shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+              className={`next-time-chip shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[12px] font-semibold ${
                 change > 0 ? 'bg-accent text-black' : 'bg-zinc-800 text-zinc-100 ring-1 ring-white/10'
               }`}
             >

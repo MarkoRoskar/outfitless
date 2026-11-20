@@ -7,6 +7,7 @@ import { mainPageTitle } from '../lib/styles'
 import PageHelp from '../components/PageHelp'
 import Reveal from '../components/Reveal'
 import { helpText } from '../lib/helpText'
+import BackToTop from '../components/BackToTop'
 
 // Lists all of the logged-in user's finished workouts
 export default function HistoryPage() {
@@ -27,6 +28,8 @@ export default function HistoryPage() {
         </Reveal>
         <WorkoutHistory />
       </main>
+      {/* The list can grow long, so there's a quick way back up */}
+      <BackToTop />
     </div>
   )
 }

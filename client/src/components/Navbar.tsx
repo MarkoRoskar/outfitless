@@ -88,7 +88,7 @@ export default function Navbar({ right }: { right?: ReactNode }) {
                   to={to}
                   end={end}
                   className={({ isActive }) =>
-                    `flex flex-col items-center gap-1 pt-2.5 pb-2 text-[11px] font-medium transition-colors duration-200 ${
+                    `flex flex-col items-center gap-1 pt-2.5 pb-2 text-[11px] min-[380px]:text-[12px] font-medium transition-colors duration-200 ${
                       isActive ? 'text-accent' : 'text-zinc-400'
                     }`
                   }
