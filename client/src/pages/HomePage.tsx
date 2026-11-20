@@ -288,10 +288,11 @@ export default function HomePage() {
         <p>
           <span className="font-brand font-extrabold text-zinc-200">out<span className="text-accent">FIT</span>less</span>
           {' '}· Made by{' '}
-          <a href="https://github.com/MarkoRoskar" target="_blank" rel="noopener" className="text-zinc-200 hover:text-accent transition-colors duration-200">
+          <Link to="/about" className="text-zinc-200 hover:text-accent transition-colors duration-200">
             Marko Roškar
-          </a>
+          </Link>
         </p>
+        <Link to="/about" className="hover:text-zinc-50 transition-colors duration-200">About</Link>
         <Link to="/privacy" className="hover:text-zinc-50 transition-colors duration-200">Privacy</Link>
       </footer>
     </div>
