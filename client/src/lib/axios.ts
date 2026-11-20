@@ -58,4 +58,14 @@ export function conflictMessage(err: unknown): string | undefined {
   return isAxiosError(err) && err.response?.status === 409 ? err.response.data.message : undefined
 }
 
+// When a request got no answer at all, what to tell the person: offline when the device says so,
+// otherwise that the server couldn't be reached (a weak signal, or the server waking up).
+// undefined when the server did answer, so the caller can explain that answer instead.
+export function connectionMessage(err: unknown): string | undefined {
+  if (!isAxiosError(err) || err.response) return undefined
+  return navigator.onLine === false
+    ? "You're offline. Connect to the internet and try again."
+    : "Can't reach outFITless right now. Check your connection and try again."
+}
+
 export default api

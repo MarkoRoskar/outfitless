@@ -9,6 +9,21 @@ import PasswordInput from '../components/PasswordInput'
 import { ArrowLeftIcon } from '../components/icons'
 import Reveal from '../components/Reveal'
 import { useFormErrors } from '../lib/useFormErrors'
+import { connectionMessage } from '../lib/axios'
+
+// Why logging in failed, in words that say what to do: no connection, too many tries, an email
+// that isn't verified yet (the server's own message), a problem on the server, or a wrong email or
+// password. Only that last one blames what was typed.
+function loginErrorMessage(err: unknown) {
+  const noConnection = connectionMessage(err)
+  if (noConnection) return noConnection
+  if (!isAxiosError(err)) return 'Something went wrong. Please try again.'
+  const status = err.response?.status ?? 0
+  if (status === 429) return 'Too many attempts. Please try again later.'
+  if (status === 403 && typeof err.response?.data?.message === 'string') return err.response.data.message
+  if (status >= 500) return 'Something went wrong on our side. Please try again in a moment.'
+  return 'Invalid email or password.'
+}
 
 export default function LoginPage() {
   const { login, token, logout } = useAuthStore()
@@ -51,11 +66,7 @@ export default function LoginPage() {
       await login(email, password)
       navigate(returnTo ?? '/', { replace: Boolean(returnTo) })
     } catch (err) {
-      setError(
-        isAxiosError(err) && err.response?.status === 429
-          ? 'Too many attempts. Please try again later.'
-          : 'Invalid email or password.'
-      )
+      setError(loginErrorMessage(err))
     } finally {
       setLoading(false)
     }
